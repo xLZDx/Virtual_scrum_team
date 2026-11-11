@@ -2327,3 +2327,7 @@ Three reviewers checked refusal paths but not that the audit record counted only
 ## 2026-11-11 SHORTCOMING migration and restore paths proven by reading only
 
 U5-3 adds a migration, a rollback point and a restore that were never executed (operator ban on running tests), so SQLite online backup into a WAL database, trigger behaviour and Windows file replace are unproven. Layer: author, no runtime check available. Rule: for a data-moving change, state the first runtime check to run when the ban is lifted (restore comparison of table dumps) and keep the design reversible by a verified backup taken before the first write.
+
+## 2026-11-11 SHORTCOMING reviewers found what author tests missed in the migration design
+
+Reviewers found: rollback point not bound to the migrated state, unfenced whole-store restore, unfrozen schema, a long lock, applied derived from a caller flag, a raw IntegrityError escaping, and untested crash paths. Layer: author design and tests (no runtime available). Rule: for a data-moving change write down which state each safety copy belongs to, who may call the destructive path and how it is fenced, derive recorded figures from verified facts instead of caller flags, and add a crash-half-way test for every multi-write step.

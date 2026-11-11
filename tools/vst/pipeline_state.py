@@ -14,6 +14,15 @@ Rules (details in docs/sdlc/u5/PIPELINE_STATE.md):
 - Stop path: `stop_story` writes one marker row, marks the open worker attempt STOPPED and is
   idempotent (a second stop returns the first one and writes nothing). After it only `acknowledge_stop`
   (a recorded stop acknowledgment), replays of already recorded steps, and reads are accepted.
+- Every step re-reads the pipeline schema state inside its transaction (version, tables and the frozen v1
+  schema hash), so a restore or down-migration underneath an open PipelineState is noticed and refused
+  (kind 'schema' or 'partial') instead of writing into a different schema.
+- Any sqlite3.IntegrityError raised while a step applies (duplicate id, CHECK, unique index, append-only
+  trigger) becomes StoreError(kind 'duplicate', 'constraint' or 'append_only') and rolls the step back.
+- Attempt rules: patch proposals attach only to a STARTED attempt and must carry the attempt's base_head
+  (else kind 'conflict'). A SUCCEEDED finish must name the candidate_head of an ACCEPTED proposal of that
+  attempt when one exists (else kind 'conflict'); with no ACCEPTED proposal the candidate head is the
+  caller's report of the worker's own commit and is only format-checked.
 - Receipts are not duplicated: `link_receipt` points at an existing row of the store's `receipts`
   table of the same story.
 - Nothing here signs anything and nothing is a gate decision; the rows record what U5-1 (worker
@@ -117,7 +126,10 @@ def _json(value: Any, name: str) -> str:
 
 
 def _integrity_kind(exc: sqlite3.IntegrityError) -> str:
-    return "duplicate" if "UNIQUE" in str(exc) else "pipeline"
+    text = str(exc)
+    if "append-only" in text:
+        return "append_only"
+    return "duplicate" if "UNIQUE" in text else "constraint"
 
 
 def _plain(value: Any) -> Any:
@@ -152,6 +164,8 @@ class PipelineState:
         digest = hashlib.sha256(_json({"kind": kind, "payload": dict(payload)}, "payload").encode("utf-8")).hexdigest()
         store = self._store
         with store._tx() as conn:
+            if pipeline_version(conn) != PIPELINE_SCHEMA_VERSION:
+                raise StoreError("pipeline schema is not at the expected version; run migrate_pipeline", kind="schema")
             story = store._story_row(conn, story_id)
             if int(story["epoch"]) != epoch:
                 raise StoreError(
@@ -173,12 +187,15 @@ class PipelineState:
             ).fetchone() is not None
             if stopped and not allow_stopped:
                 raise StoreError(f"story {story_id!r} is stopped; only the stop acknowledgment is accepted", kind="stopped")
-            result = _plain(apply(conn, stopped))
-            conn.execute(
-                "INSERT INTO pl_steps (story_id, step_id, kind, epoch, payload_sha256, result, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (story_id, step_id, kind, epoch, digest, _json(result, "result"), store._now()),
-            )
+            try:
+                result = _plain(apply(conn, stopped))
+                conn.execute(
+                    "INSERT INTO pl_steps (story_id, step_id, kind, epoch, payload_sha256, result, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (story_id, step_id, kind, epoch, digest, _json(result, "result"), store._now()),
+                )
+            except sqlite3.IntegrityError as exc:
+                raise StoreError(f"step {step_id!r} violates a pipeline constraint: {exc}", kind=_integrity_kind(exc)) from exc
             return StepResult(step_id, kind, False, result)
 
     @staticmethod
@@ -190,6 +207,13 @@ class PipelineState:
             raise StoreError(f"unknown worker attempt {attempt_no} of story {story_id!r}", kind="pipeline")
         if row["state"] == "STOPPED":
             raise StoreError(f"worker attempt {attempt_no} was stopped", kind="stopped")
+        return row
+
+    @classmethod
+    def _started_attempt(cls, conn: sqlite3.Connection, story_id: str, attempt_no: int) -> sqlite3.Row:
+        row = cls._attempt(conn, story_id, attempt_no)
+        if row["state"] != "STARTED":
+            raise StoreError(f"attempt {attempt_no} is {row['state']}, not STARTED", kind="pipeline")
         return row
 
     # -------------------------------------------------------------- worker attempts
@@ -233,6 +257,18 @@ class PipelineState:
             row = self._attempt(conn, sid, attempt_no)
             if row["state"] != "STARTED":
                 raise StoreError(f"attempt {attempt_no} is already {row['state']}", kind="pipeline")
+            if state == "SUCCEEDED":
+                accepted = {
+                    r[0] for r in conn.execute(
+                        "SELECT candidate_head FROM pl_patch_proposals WHERE story_id = ? AND attempt_no = ? "
+                        "AND verdict = 'ACCEPTED'", (sid, attempt_no),
+                    )
+                }
+                if accepted and candidate_head not in accepted:
+                    raise StoreError(
+                        f"candidate_head differs from the ACCEPTED proposal candidate of attempt {attempt_no}",
+                        kind="conflict",
+                    )
             conn.execute(
                 "UPDATE pl_worker_attempts SET state = ?, candidate_head = ?, finish_step_id = ? "
                 "WHERE story_id = ? AND attempt_no = ?",
@@ -264,7 +300,11 @@ class PipelineState:
         sid = story_id
 
         def apply(conn: sqlite3.Connection, stopped: bool) -> dict:
-            self._attempt(conn, sid, attempt_no)
+            attempt = self._started_attempt(conn, sid, attempt_no)
+            if attempt["base_head"] != base_head:
+                raise StoreError(
+                    f"base_head differs from the base_head of attempt {attempt_no}", kind="conflict"
+                )
             conn.execute(
                 "INSERT INTO pl_patch_proposals (story_id, proposal_id, attempt_no, epoch, step_id, base_head, "
                 "proposal_document_sha256, candidate_head, verdict, stage, attempted_hunks, applied_hunks, "
@@ -283,6 +323,11 @@ class PipelineState:
 
     @staticmethod
     def _check_run_record(run_record: Any) -> tuple[dict, int, int]:
+        """Validate a U5-2 run record and derive (record, attempted_hunks, applied_hunks).
+
+        `applied` is DERIVED here: verdict ACCEPTED and post_materialize_verified exactly True. A stored
+        `applied` that disagrees is refused, so a caller flag can never raise the applied count.
+        """
         if not isinstance(run_record, Mapping) or run_record.get("schema") != RUN_RECORD_SCHEMA:
             raise StoreError(f"run_record: schema must be {RUN_RECORD_SCHEMA!r}", kind="argument")
         record = dict(run_record)
@@ -292,20 +337,37 @@ class PipelineState:
         record["candidate_head"] = _head(record.get("candidate_head"), "run_record.candidate_head", optional=True)
         if type(record.get("applied")) is not bool:
             raise StoreError("run_record.applied: must be a boolean", kind="argument")
-        for name in ("proposal_lines", "model_lines", "attempted_proposal_lines"):
-            _int(record.get(name), f"run_record.{name}", 0)
+        applied = verdict == "ACCEPTED" and record.get("post_materialize_verified") is True
+        if record["applied"] != applied:
+            raise StoreError(
+                "run_record.applied disagrees with verdict ACCEPTED and post_materialize_verified true", kind="argument"
+            )
+        proposal_lines = _int(record.get("proposal_lines"), "run_record.proposal_lines", 0)
+        _int(record.get("model_lines"), "run_record.model_lines", 0)
+        declared_lines = _int(record.get("attempted_proposal_lines"), "run_record.attempted_proposal_lines", 0)
         hunks = record.get("attempted_proposal_hunks")
-        if not isinstance(hunks, Mapping) or any(not isinstance(rows, list) for rows in hunks.values()):
+        if not isinstance(hunks, Mapping):
             raise StoreError("run_record.attempted_proposal_hunks: must map paths to lists", kind="argument")
-        attempted = sum(len(rows) for rows in hunks.values())
-        applied = attempted if record["applied"] else 0
-        if record["applied"] and verdict != "ACCEPTED":
-            raise StoreError("run_record: applied is true but the verdict is not ACCEPTED", kind="argument")
+        attempted = 0
+        line_sum = 0
+        for path, rows in hunks.items():
+            if not isinstance(path, str) or not isinstance(rows, list):
+                raise StoreError("run_record.attempted_proposal_hunks: must map paths to lists", kind="argument")
+            for hunk in rows:
+                if (not isinstance(hunk, (list, tuple)) or len(hunk) != 2
+                        or any(type(v) is not int or v < 0 for v in hunk)):
+                    raise StoreError("run_record: every hunk must be [added, deleted] non-negative integers", kind="argument")
+                attempted += 1
+                line_sum += hunk[0] + hunk[1]
+        if declared_lines != line_sum:
+            raise StoreError("run_record.attempted_proposal_lines differs from the sum over the attempted hunks", kind="argument")
         if verdict == "ACCEPTED" and (record["report_sha256"] is None or record["candidate_head"] is None):
             raise StoreError("run_record: an ACCEPTED record needs report_sha256 and candidate_head", kind="argument")
-        if not record["applied"] and record["proposal_lines"] != 0:
+        if applied and proposal_lines != declared_lines:
+            raise StoreError("run_record: an applied record must count all attempted lines as proposal lines", kind="argument")
+        if not applied and proposal_lines != 0:
             raise StoreError("run_record: proposal lines are counted only for applied proposals", kind="argument")
-        return record, attempted, applied
+        return record, attempted, (attempted if applied else 0)
 
     # -------------------------------------------------------------- diff gate
     def record_diff_gate(
@@ -482,6 +544,11 @@ class PipelineState:
         receipt_id = _text(receipt_id, "receipt_id", 200)
         subject_kind = _enum(subject_kind, "subject_kind", SUBJECT_KINDS)
         subject_key = _id(subject_key, "subject_key")
+        numeric_key = 0
+        if subject_kind in ("WORKER_ATTEMPT", "REVIEW_ITERATION"):
+            if not (subject_key.isascii() and subject_key.isdecimal() and subject_key[0] != "0"):
+                raise StoreError("subject_key: must be a positive decimal integer without leading zeros", kind="argument")
+            numeric_key = int(subject_key)
         sid = story_id
 
         def apply(conn: sqlite3.Connection, stopped: bool) -> dict:
@@ -489,13 +556,14 @@ class PipelineState:
             if receipt is None or receipt["story_id"] != sid:
                 raise StoreError(f"receipt {receipt_id!r} does not exist in story {sid!r}", kind="receipt")
             lookup = {
-                "WORKER_ATTEMPT": "SELECT 1 FROM pl_worker_attempts WHERE story_id = ? AND attempt_no = CAST(? AS INT)",
+                "WORKER_ATTEMPT": "SELECT 1 FROM pl_worker_attempts WHERE story_id = ? AND attempt_no = ?",
                 "PATCH_PROPOSAL": "SELECT 1 FROM pl_patch_proposals WHERE story_id = ? AND proposal_id = ?",
                 "DIFF_GATE": "SELECT 1 FROM pl_diff_gates WHERE story_id = ? AND gate_id = ?",
-                "REVIEW_ITERATION": "SELECT 1 FROM pl_review_iterations WHERE story_id = ? AND iteration_index = CAST(? AS INT)",
+                "REVIEW_ITERATION": "SELECT 1 FROM pl_review_iterations WHERE story_id = ? AND iteration_index = ?",
                 "TEST_EVIDENCE": "SELECT 1 FROM pl_test_evidence WHERE story_id = ? AND evidence_id = ?",
             }[subject_kind]
-            if conn.execute(lookup, (sid, subject_key)).fetchone() is None:
+            probe = numeric_key if subject_kind in ("WORKER_ATTEMPT", "REVIEW_ITERATION") else subject_key
+            if conn.execute(lookup, (sid, probe)).fetchone() is None:
                 raise StoreError(f"{subject_kind} {subject_key!r} does not exist in story {sid!r}", kind="pipeline")
             try:
                 conn.execute(

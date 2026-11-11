@@ -16,16 +16,20 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import threading
 
 import pytest
 
+from tools.vst import contracts
 from tools.vst import pipeline_migration as pm
+from tools.vst import pipeline_schema
 from tools.vst import worker_gate as wg
 from tools.vst.pipeline_migration import (
     MigrationError,
     MigrationLock,
+    down_migrate_pipeline,
     migrate_pipeline,
     migration_status,
     restore_rollback_point,
@@ -33,7 +37,7 @@ from tools.vst.pipeline_migration import (
 from tools.vst.pipeline_state import PipelineState
 from tools.vst.store import Store, StoreError
 
-from .e1e4_helpers import KEY, OWNER_TTL, STORY, STORY2, FakeClock, lease, new_env, open_store, receipt
+from .e1e4_helpers import KEY, OWNER_TTL, STORY, STORY2, FakeClock, lease, manifest, mhash, new_env, open_store, receipt
 
 BASE = "b" * 40
 CAND = "c" * 40
@@ -279,9 +283,9 @@ def test_diff_gate_refusals_and_object_input(env):
     for label, gate in cases.items():
         raises_kind("argument", ps.record_diff_gate, STORY, epoch=epoch, step_id="x-" + label.replace(" ", "-"),
                     gate_id="gate-x", attempt_no=1, gate=gate)
+    ps.record_patch_proposal(STORY, epoch=epoch, step_id="p9", attempt_no=1, proposal_id="prop-old", base_head=BASE, run_record=run_record())
     ps.finish_worker_attempt(STORY, epoch=epoch, step_id="f1", attempt_no=1, state="FAILED")
     start(ps, epoch, "s2")
-    ps.record_patch_proposal(STORY, epoch=epoch, step_id="p9", attempt_no=1, proposal_id="prop-old", base_head=BASE, run_record=run_record())
     raises_kind("pipeline", ps.record_diff_gate, STORY, epoch=epoch, step_id="g9", gate_id="gate-9", attempt_no=2,
                 gate=accepted_gate(), proposal_id="prop-old")  # the proposal belongs to attempt 1
     assert count(path, "pl_diff_gates") == 1
@@ -503,7 +507,7 @@ def test_pipeline_rows_are_append_only_in_the_database(env):
             "UPDATE pl_steps SET kind = 'STOP'", "DELETE FROM pl_steps",
             "UPDATE pl_test_evidence SET status = 'FAIL'", "DELETE FROM pl_test_evidence",
             "UPDATE pl_worker_attempts SET state = 'SUCCEEDED'",  # a closed attempt cannot change
-            "DELETE FROM pl_worker_attempts", "DELETE FROM pl_schema_version",
+            "DELETE FROM pl_worker_attempts", "DELETE FROM pl_schema_version", "UPDATE pl_schema_version SET version = 2",
         ):
             with pytest.raises(sqlite3.IntegrityError):
                 conn.execute(sql)
@@ -591,7 +595,7 @@ def test_restore_returns_the_exact_previous_rows(tmp_path):
     store.close()
     migrated = dump(path)
     assert migrated != before
-    restored = restore_rollback_point(path, result.rollback_manifest)
+    restored = restore_rollback_point(path, result.rollback_manifest, confirm_stopped=True)
     assert restored.store_user_version == 7 and restored.pipeline_version == 0
     assert dump(path) == before
     assert not any(n.startswith("pl_") for n in tables(path))
@@ -606,7 +610,7 @@ def test_restore_returns_the_exact_previous_rows(tmp_path):
     assert len(manifests(path)) == 3  # pre-migration, pre-restore, pre-migration
 
 
-@pytest.mark.parametrize("stage", ["before_ddl", "mid_ddl", "before_commit"])
+@pytest.mark.parametrize("stage", ["after_backup", "before_ddl", "mid_ddl", "before_commit"])
 def test_failure_inside_the_migration_leaves_the_old_version(tmp_path, stage):
     path, _ = old_store(tmp_path)
     before = dump(path)
@@ -678,6 +682,7 @@ def test_newer_unknown_pipeline_schema_is_refused(tmp_path):
     path, _ = old_store(tmp_path)
     migrate_pipeline(path)
     conn = sqlite3.connect(path)
+    conn.execute("DROP TRIGGER pl_schema_version_no_update")  # the row is immutable; play the attacker
     conn.execute("UPDATE pl_schema_version SET version = 2")
     conn.commit()
     conn.close()
@@ -726,7 +731,7 @@ def test_corrupted_backup_is_refused_on_restore_and_the_store_is_untouched(tmp_p
     data[len(data) // 2] ^= 0xFF
     with open(backup, "wb") as handle:
         handle.write(bytes(data))
-    raises_kind("backup", restore_rollback_point, path, result.rollback_manifest)
+    raises_kind("backup", restore_rollback_point, path, result.rollback_manifest, confirm_stopped=True)
     assert dump(path) == migrated and len(manifests(path)) == 1   # no pre-restore point for a refused restore
     assert not os.path.exists(path + pm.LOCK_SUFFIX)
 
@@ -737,18 +742,18 @@ def test_tampered_manifest_and_foreign_manifest_are_refused(tmp_path):
     migrated = dump(path)
     manifest = load(result.rollback_manifest)
     for field, value in (("sha256", "0" * 64), ("size", manifest["size"] + 1), ("content_sha256", "1" * 64),
-                         ("store_user_version", 6), ("backup_file", "../escape.sqlite"), ("format", "other")):
+                         ("store_user_version", 6), ("invariant_sha256", "2" * 64), ("format", "other")):
         bad = dict(manifest, **{field: value})
         target = result.rollback_manifest + "." + field + ".json"
         with open(target, "wb") as handle:
             handle.write(json.dumps(bad).encode("utf-8"))
-        raises_kind("backup", restore_rollback_point, path, target)
+        raises_kind("backup", restore_rollback_point, path, target, confirm_stopped=True)
     with open(result.rollback_manifest + ".extra.json", "wb") as handle:
         handle.write(json.dumps(dict(manifest, extra=1)).encode("utf-8"))
-    raises_kind("backup", restore_rollback_point, path, result.rollback_manifest + ".extra.json")
+    raises_kind("backup", restore_rollback_point, path, result.rollback_manifest + ".extra.json", confirm_stopped=True)
     other, _ = old_store(tmp_path, "other.db")
     foreign = migrate_pipeline(other).rollback_manifest      # a valid point, but of another store
-    raises_kind("backup", restore_rollback_point, path, foreign)
+    raises_kind("backup", restore_rollback_point, path, foreign, confirm_stopped=True)
     assert dump(path) == migrated
 
 
@@ -757,7 +762,8 @@ def test_concurrent_migration_is_refused_by_the_lock(tmp_path):
     before = dump(path)
     with MigrationLock(path) as held:
         raises_kind("locked", migrate_pipeline, path)
-        raises_kind("locked", restore_rollback_point, path, os.path.join(path + pm.ROLLBACK_SUFFIX, "x.manifest.json"))
+        raises_kind("locked", restore_rollback_point, path, os.path.join(path + pm.ROLLBACK_SUFFIX, "x.manifest.json"),
+                    confirm_stopped=True)
         assert os.path.exists(path + pm.LOCK_SUFFIX)          # the refused caller did not remove the holder's lock
         raises_kind("locked", pm.clear_stale_lock, path, "wrong-token")
         assert os.path.exists(path + pm.LOCK_SUFFIX)
@@ -795,3 +801,347 @@ def test_two_simultaneous_migrations_apply_the_change_once(tmp_path):
     assert all(o[1].kind == "locked" for o in outcomes if o[0] == "error")
     assert migration_status(path)["state"] == "CURRENT" and len(manifests(path)) == 1
     assert not os.path.exists(path + pm.LOCK_SUFFIX)
+
+
+# =====================================================================================
+# Review remediation: typed errors, crash paths, restore safety, down-migration, frozen schema
+# =====================================================================================
+def test_duplicate_ids_under_a_new_step_are_typed_errors_and_write_nothing(env):
+    ps, _, _, path, epoch = env
+    start(ps, epoch)
+    ps.record_patch_proposal(STORY, epoch=epoch, step_id="p1", attempt_no=1, proposal_id="prop-1", base_head=BASE, run_record=run_record())
+    ps.record_diff_gate(STORY, epoch=epoch, step_id="g1", gate_id="gate-1", attempt_no=1, gate=accepted_gate())
+    ps.record_review_iteration(STORY, epoch=epoch, step_id="r1", attempt_no=1, iteration_index=1, iteration_of=None,
+                               findings_count=0, coverage_declared=["R1"], verdict="CLEAN")
+    ps.record_test_evidence(STORY, epoch=epoch, step_id="t1", attempt_no=1, evidence_id="ev-1", test_id="t", status="PASS", evidence_sha256=EVID)
+    steps = count(path, "pl_steps")
+    assert steps == 5
+    snapshot = dump(path)
+    raises_kind("duplicate", ps.record_patch_proposal, STORY, epoch=epoch, step_id="p2", attempt_no=1, proposal_id="prop-1",
+                base_head=BASE, run_record=run_record())
+    raises_kind("duplicate", ps.record_diff_gate, STORY, epoch=epoch, step_id="g2", gate_id="gate-1", attempt_no=1, gate=accepted_gate())
+    raises_kind("pipeline", ps.record_review_iteration, STORY, epoch=epoch, step_id="r2", attempt_no=1, iteration_index=1,
+                iteration_of=None, findings_count=0, coverage_declared=["R1"], verdict="CLEAN")
+    raises_kind("duplicate", ps.record_test_evidence, STORY, epoch=epoch, step_id="t2", attempt_no=1, evidence_id="ev-1",
+                test_id="other", status="PASS", evidence_sha256=EVID)
+    assert dump(path) == snapshot  # no step row, no child row
+
+
+def test_crash_inside_a_step_leaves_nothing_and_the_retry_succeeds_once(env, monkeypatch):
+    ps, store, _, path, epoch = env
+
+    def boom():
+        raise RuntimeError("crash after the first insert")
+
+    monkeypatch.setattr(store, "_now", boom)  # evaluated when the step row is written, after the attempt row
+    with pytest.raises(RuntimeError):
+        start(ps, epoch)
+    monkeypatch.undo()
+    assert count(path, "pl_steps") == 0 and count(path, "pl_worker_attempts") == 0
+    first = start(ps, epoch)
+    assert first.replayed is False and first.result == {"attempt_no": 1}
+    assert start(ps, epoch).replayed is True
+    assert count(path, "pl_steps") == 1 and count(path, "pl_worker_attempts") == 1
+
+
+def test_crash_during_stop_records_no_stop_and_the_retry_works(env, monkeypatch):
+    ps, store, _, path, epoch = env
+    start(ps, epoch)
+
+    def boom():
+        raise RuntimeError("crash while stopping")
+
+    monkeypatch.setattr(store, "_now", boom)  # evaluated after the open attempt was marked STOPPED
+    with pytest.raises(RuntimeError):
+        ps.stop_story(STORY, epoch=epoch, step_id="stop-1", reason="operator stop")
+    monkeypatch.undo()
+    assert count(path, "pl_story_control") == 0 and count(path, "pl_steps") == 1
+    assert ps.list_worker_attempts(STORY)[0]["state"] == "STARTED"
+    assert ps.get_status(STORY)["stopped"] is False
+    res = ps.stop_story(STORY, epoch=epoch, step_id="stop-1", reason="operator stop")
+    assert res.replayed is False and res.result["attempts_stopped"] == 1
+    assert ps.list_worker_attempts(STORY)[0]["state"] == "STOPPED" and count(path, "pl_steps") == 2
+
+
+def test_a_receipt_of_another_story_cannot_be_linked_and_numeric_keys_are_canonical(tmp_path):
+    path = str(tmp_path / "state.db")
+    store, _, epoch = new_env(path)
+    migrate_pipeline(path)
+    m2 = manifest(task_id="T2", story_id=STORY2)
+    store.open_story(STORY2, "proj", 4)
+    store.register_task(m2)
+    epoch2 = store.acquire_epoch(STORY2, "owner-a", OWNER_TTL)
+    lease(store, epoch2, task="T2", story=STORY2)
+    store.append_receipt(receipt("TestRun", epoch=epoch2, task_id="T2", manifest_sha256=mhash(m2), receipt_id="r-other"), STORY2, KEY)
+    ps = PipelineState(store)
+    start(ps, epoch)
+    raises_kind("receipt", ps.link_receipt, STORY, epoch=epoch, step_id="l1", receipt_id="r-other",
+                subject_kind="WORKER_ATTEMPT", subject_key="1")
+    for bad in ("01", "0", "1.0"):
+        raises_kind("argument", ps.link_receipt, STORY, epoch=epoch, step_id="l2", receipt_id="r-other",
+                    subject_kind="WORKER_ATTEMPT", subject_key=bad)
+        raises_kind("argument", ps.link_receipt, STORY, epoch=epoch, step_id="l3", receipt_id="r-other",
+                    subject_kind="REVIEW_ITERATION", subject_key=bad)
+    assert count(path, "pl_receipt_links") == 0 and count(path, "pl_steps") == 1
+    store.close()
+
+
+def test_applied_is_derived_from_the_verdict_and_the_verified_write(env):
+    ps, _, _, path, epoch = env
+    start(ps, epoch)
+    cases = [
+        # (proposal_id, record, attempted_hunks, applied_hunks, proposal_lines)
+        ("c1", run_record(), 1, 1, 2),                                       # ACCEPTED + verified: hunk [1, 1] = 2 lines
+        ("c2", run_record(applied=False, post_materialize_verified=False, proposal_lines=0), 1, 0, 0),  # built, not verified
+        ("c3", run_record(verdict="BLOCKED", stage="post_write_check", applied=False, post_materialize_verified=None,
+                          candidate_head=None, proposal_lines=0, attempted_proposal_lines=6,
+                          attempted_proposal_hunks={"a.py": [[3, 1], [0, 2]]}), 2, 0, 0),  # 2 hunks, 4 + 2 lines, none applied
+        ("c4", run_record(attempted_proposal_hunks={"a.py": [[3, 1]], "b.py": [[2, 0]]}, attempted_proposal_lines=6,
+                          proposal_lines=6), 2, 2, 6),                      # two files: 4 + 2 lines
+    ]
+    for pid, record, attempted, applied, lines in cases:
+        ps.record_patch_proposal(STORY, epoch=epoch, step_id="step-" + pid, attempt_no=1, proposal_id=pid, base_head=BASE, run_record=record)
+    got = {r["proposal_id"]: (r["attempted_hunks"], r["applied_hunks"], r["proposal_lines"]) for r in ps.list_patch_proposals(STORY)}
+    assert got == {pid: (a, b, c) for pid, _, a, b, c in cases}
+    inconsistent = {
+        "applied flag without verified write": run_record(post_materialize_verified=False),
+        "applied flag with unknown write": run_record(post_materialize_verified=None),
+        "verified write with applied false": run_record(applied=False, proposal_lines=0),
+        "blocked but applied": run_record(verdict="BLOCKED"),
+        "negative hunk": run_record(attempted_proposal_hunks={"a.py": [[-1, 3]]}),
+        "boolean hunk": run_record(attempted_proposal_hunks={"a.py": [[True, 1]]}, attempted_proposal_lines=2),
+        "three-number hunk": run_record(attempted_proposal_hunks={"a.py": [[1, 1, 1]]}),
+        "lines differ from hunks": run_record(attempted_proposal_lines=5),
+        "applied lines differ": run_record(proposal_lines=1),
+        "lines without applied": run_record(verdict="BLOCKED", applied=False, post_materialize_verified=None, proposal_lines=2),
+    }
+    for label, record in inconsistent.items():
+        raises_kind("argument", ps.record_patch_proposal, STORY, epoch=epoch, step_id="bad-" + label.replace(" ", "-"),
+                    attempt_no=1, proposal_id="bad", base_head=BASE, run_record=record)
+    assert count(path, "pl_patch_proposals") == 4 and count(path, "pl_steps") == 5
+
+
+def test_proposals_attach_only_to_a_started_attempt_with_its_base_head(env):
+    ps, _, _, path, epoch = env
+    start(ps, epoch)
+    raises_kind("conflict", ps.record_patch_proposal, STORY, epoch=epoch, step_id="p0", attempt_no=1, proposal_id="prop-0",
+                base_head="a" * 40, run_record=run_record())
+    raises_kind("pipeline", ps.record_patch_proposal, STORY, epoch=epoch, step_id="p00", attempt_no=9, proposal_id="prop-0",
+                base_head=BASE, run_record=run_record())
+    ps.record_patch_proposal(STORY, epoch=epoch, step_id="p1", attempt_no=1, proposal_id="prop-1", base_head=BASE, run_record=run_record())
+    # the accepted proposal fixes the candidate of the attempt
+    raises_kind("conflict", ps.finish_worker_attempt, STORY, epoch=epoch, step_id="f0", attempt_no=1, state="SUCCEEDED", candidate_head="a" * 40)
+    ps.finish_worker_attempt(STORY, epoch=epoch, step_id="f1", attempt_no=1, state="SUCCEEDED", candidate_head=CAND)
+    raises_kind("pipeline", ps.record_patch_proposal, STORY, epoch=epoch, step_id="p2", attempt_no=1, proposal_id="prop-2",
+                base_head=BASE, run_record=run_record())  # attempt 1 is closed
+    assert count(path, "pl_patch_proposals") == 1
+
+
+def test_database_rejects_a_second_started_attempt_and_a_succeeded_attempt_without_candidate(env):
+    ps, _, _, path, epoch = env
+    start(ps, epoch)
+    conn = sqlite3.connect(path)
+    insert = ("INSERT INTO pl_worker_attempts (story_id, attempt_no, epoch, step_id, base_head, state) "
+              "VALUES (?, ?, ?, 'x', ?, ?)")
+    try:
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(insert, (STORY, 2, epoch, BASE, "STARTED"))      # partial unique index: one STARTED per story
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(insert, (STORY, 3, epoch, BASE, "SUCCEEDED"))    # CHECK: SUCCEEDED needs a candidate head
+        conn.execute(insert, (STORY, 4, epoch, BASE, "FAILED"))            # a closed attempt is fine
+        conn.rollback()
+    finally:
+        conn.close()
+    assert count(path, "pl_worker_attempts") == 1
+
+
+def test_open_pipeline_state_notices_a_down_migration_underneath(tmp_path):
+    path, _ = old_store(tmp_path)
+    migrate_pipeline(path)
+    store = open_store(path, FakeClock())
+    try:
+        ps = PipelineState(store)
+        epoch = current_epoch(path)
+        start(ps, epoch)
+        down_migrate_pipeline(path, allow_data_loss=True)
+        raises_kind("schema", start, ps, epoch, "s-after")
+    finally:
+        store.close()
+
+
+# --------------------------------------------------------------------- frozen schema, lock token, D1
+def test_schema_is_frozen_and_the_hash_is_stored(tmp_path):
+    path, _ = old_store(tmp_path)
+    migrate_pipeline(path)
+    stored = rows(path, "SELECT schema_sha256 FROM pl_schema_version")[0][0]
+    assert len(stored) == 64 and set(stored) <= set("0123456789abcdef")
+    assert stored == pipeline_schema.expected_schema_sha256()
+    assert list(pipeline_schema.TEST_STATUSES) == sorted(contracts.RESULT)
+    triggers = {r[0] for r in rows(path, "SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'pl\\_%' ESCAPE '\\'")}
+    assert "pl_steps_no_update" in triggers and "pl_schema_version_no_update" in triggers
+
+
+@pytest.mark.parametrize("statement", [
+    "DROP TRIGGER pl_steps_no_update",
+    "DROP TRIGGER pl_worker_attempts_closed",
+    "DROP INDEX pl_one_started_attempt",
+])
+def test_dropped_trigger_or_index_is_reported_as_partial(tmp_path, statement):
+    path, _ = old_store(tmp_path)
+    migrate_pipeline(path)
+    conn = sqlite3.connect(path)
+    conn.execute(statement)
+    conn.close()
+    raises_kind("partial", migration_status, path)
+    raises_kind("partial", migrate_pipeline, path)                       # never "repaired" or adopted
+    raises_kind("partial", down_migrate_pipeline, path, allow_data_loss=True)
+    store = open_store(path, FakeClock())
+    try:
+        raises_kind("partial", PipelineState, store)
+    finally:
+        store.close()
+    raises_kind("partial", migration_status, path)
+
+
+def test_lock_release_never_removes_a_lock_that_carries_another_token(tmp_path):
+    path, _ = old_store(tmp_path)
+    with pytest.raises(MigrationError) as exc:
+        with MigrationLock(path):
+            os.remove(path + pm.LOCK_SUFFIX)                       # cleared and re-taken by someone else
+            with open(path + pm.LOCK_SUFFIX, "wb") as handle:
+                handle.write(json.dumps({"pid": 2, "token": "second-holder"}).encode("ascii"))
+    assert exc.value.kind == "locked"
+    with open(path + pm.LOCK_SUFFIX, "rb") as handle:
+        assert json.loads(handle.read().decode("ascii"))["token"] == "second-holder"
+    pm.clear_stale_lock(path, "second-holder")
+    assert not os.path.exists(path + pm.LOCK_SUFFIX)
+
+
+def test_rollback_point_taken_from_another_state_aborts_the_migration(tmp_path, monkeypatch):
+    path, _ = old_store(tmp_path)
+    before = dump(path)
+    real = pm.create_rollback_point
+
+    def other_state(*args, **kwargs):
+        return real(*args, **dict(kwargs, expect_invariant="0" * 64))  # as if the backup came from a different state
+
+    monkeypatch.setattr(pm, "create_rollback_point", other_state)
+    raises_kind("backup", migrate_pipeline, path)
+    monkeypatch.undo()
+    assert dump(path) == before                                         # no DDL ran
+    assert not os.path.exists(path + pm.LOCK_SUFFIX) and manifests(path) == []
+    assert not [n for n in os.listdir(path + pm.ROLLBACK_SUFFIX) if n.endswith(".sqlite") or n.endswith(".tmp")]
+    assert migrate_pipeline(path).performed is True                    # the next run takes a matching point
+
+
+def test_the_rollback_point_records_the_state_invariant_of_the_migrated_state(tmp_path):
+    path, _ = old_store(tmp_path)
+    result = migrate_pipeline(path)
+    manifest_doc = load(result.rollback_manifest)
+    conn = sqlite3.connect(path)
+    try:
+        # the non-pl_ part of the migrated store has the invariant that the old state had
+        assert pm.state_invariant(conn) == manifest_doc["invariant_sha256"]
+    finally:
+        conn.close()
+
+
+# --------------------------------------------------------------------- restore safety and down-migration
+def test_manifest_naming_a_file_outside_the_rollback_directory_is_refused(tmp_path):
+    path, _ = old_store(tmp_path)
+    result = migrate_pipeline(path)
+    manifest_doc = load(result.rollback_manifest)
+    folder = os.path.dirname(result.rollback_manifest)
+    outside = os.path.join(str(tmp_path), "escape.sqlite")
+    shutil.copyfile(os.path.join(folder, manifest_doc["backup_file"]), outside)  # byte-identical: every other check passes
+    migrated = dump(path)
+    for index, name in enumerate(("../escape.sqlite", "..\\escape.sqlite", os.path.join("..", "escape.sqlite"), outside)):
+        target = os.path.join(folder, f"traversal-{index}.manifest.json")
+        with open(target, "wb") as handle:
+            handle.write(json.dumps(dict(manifest_doc, backup_file=name)).encode("utf-8"))
+        err = raises_kind("backup", restore_rollback_point, path, target, confirm_stopped=True)
+        assert "unsafe" in str(err)
+    inside = os.path.join(folder, "copy.sqlite")                       # control: the same bytes under a plain name load
+    shutil.copyfile(outside, inside)
+    control = os.path.join(folder, "control.manifest.json")
+    with open(control, "wb") as handle:
+        handle.write(json.dumps(dict(manifest_doc, backup_file="copy.sqlite")).encode("utf-8"))
+    assert pm.load_rollback_point(control).content_sha256 == manifest_doc["content_sha256"]
+    assert dump(path) == migrated
+
+
+def test_restore_failure_paths(tmp_path):
+    path, _ = old_store(tmp_path)
+    result = migrate_pipeline(path)
+    migrated = dump(path)
+    good = result.rollback_manifest
+    folder = os.path.dirname(good)
+    # the caller must attest that the store is stopped, with exactly True
+    raises_kind("restore", restore_rollback_point, path, good)
+    raises_kind("restore", restore_rollback_point, path, good, confirm_stopped=1)
+    # corrupt manifest and missing backup file
+    junk = os.path.join(folder, "junk.json")
+    with open(junk, "wb") as handle:
+        handle.write(b"{not json")
+    raises_kind("backup", restore_rollback_point, path, junk, confirm_stopped=True)
+    gone = os.path.join(folder, "gone.json")
+    with open(gone, "wb") as handle:
+        handle.write(json.dumps(dict(load(good), backup_file="gone.sqlite")).encode("utf-8"))
+    raises_kind("backup", restore_rollback_point, path, gone, confirm_stopped=True)
+    # a live writer blocks the restore (the exclusive probe fails); nothing is changed or saved
+    holder = sqlite3.connect(path, isolation_level=None)
+    holder.execute("BEGIN IMMEDIATE")
+    try:
+        raises_kind("restore", restore_rollback_point, path, good, confirm_stopped=True, busy_timeout_sec=0.2)
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    assert dump(path) == migrated
+    assert [m for m in manifests(path) if load(m)["kind"] == "pre-restore"] == []
+    assert not os.path.exists(path + pm.LOCK_SUFFIX)
+
+
+def test_restore_refuses_a_point_of_another_store_schema_version_unless_overridden(tmp_path):
+    path, _ = old_store(tmp_path)
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA user_version = 6")
+    conn.close()
+    point = pm.create_rollback_point(path)                              # a verified point that holds store version 6
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA user_version = 7")
+    conn.close()
+    current = dump(path)
+    raises_kind("restore", restore_rollback_point, path, point.manifest_path, confirm_stopped=True)
+    assert dump(path) == current
+    done = restore_rollback_point(path, point.manifest_path, confirm_stopped=True, allow_store_version_change=True)
+    assert done.store_user_version == 6 and rows(path, "PRAGMA user_version")[0][0] == 6
+    journal = load(os.path.join(path + pm.ROLLBACK_SUFFIX, pm.JOURNAL_NAME))
+    assert journal["state"] == "RESTORED" and "allow_store_version_change" in journal["note"]
+
+
+def test_down_migration_restores_the_previous_dump_and_guards_pipeline_data(tmp_path):
+    path, _ = old_store(tmp_path)
+    before = dump(path)
+    migrate_pipeline(path)
+    down = down_migrate_pipeline(path)                                  # empty pipeline tables: nothing to lose
+    assert (down.from_version, down.to_version, down.rows_dropped) == (1, 0, 0)
+    assert dump(path) == before                                         # exact previous schema objects and rows
+    assert migration_status(path)["state"] == "NOT_MIGRATED"
+    assert down_migrate_pipeline(path).rollback_manifest is None        # already at version 0: no-op
+    assert load(down.rollback_manifest)["kind"] == "pre-down-migration"
+    assert load(os.path.join(path + pm.ROLLBACK_SUFFIX, pm.JOURNAL_NAME))["state"] == "DOWNGRADED"
+    migrate_pipeline(path)                                              # and it can be applied again
+    store = open_store(path, FakeClock())
+    try:
+        start(PipelineState(store), current_epoch(path))                # 1 step row + 1 attempt row
+    finally:
+        store.close()
+    with_rows = dump(path)
+    raises_kind("data", down_migrate_pipeline, path)
+    raises_kind("data", down_migrate_pipeline, path, allow_data_loss="yes")
+    assert dump(path) == with_rows and migration_status(path)["state"] == "CURRENT"
+    lossy = down_migrate_pipeline(path, allow_data_loss=True)
+    assert lossy.rows_dropped == 2
+    assert dump(path) == without_pl(with_rows)
+    assert not any(n.startswith("pl_") for n in tables(path))
+    assert pm.load_rollback_point(lossy.rollback_manifest).pipeline_version == 1  # the dropped data is in the point
