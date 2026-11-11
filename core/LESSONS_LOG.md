@@ -2479,3 +2479,7 @@ To stop its own timed-out background command the agent ran pkill -f python, whic
 ## 2026-11-11 SHORTCOMING the first register omitted a FAILURE logged minutes earlier and a false claim about plan rows
 
 The fact-checker found the missing pkill row, the sentence that every task has an APPROVE in its plan row (three rows say NOT_RUN) and a citation of a document that does not contain the claim, copied from SAVINGS_REPORT.md. Layer missed: author; reviewer caught it. Rule: a register must be diffed against the log before review, and a citation must be opened, not remembered.
+
+## 2026-11-11 SUCCESS fact-check by a read-only reviewer before GPT-PM
+
+Three MAJOR statements in a documentation task were caught by one reviewer reading cited lines. Rule: documents that make factual claims get a fact-check pass, not only code.

@@ -3229,3 +3229,7 @@ Added docs/sdlc/u6/RETROSPECTIVE.md: retrospectives U1-U5 and a 58-row register 
 ## 2026-11-11 U6-3 remediation after fact-check
 
 One batch applied: register now 62 rows (DEFECT 11, SHORTCOMING 25, NOT_RUN 14, DESIGN_DECISION_PENDING 2, FAILURE 10) with new rows for the pkill failure (R-65, open), request v1 (R-66), duplicated product (R-67) and stale plan rows (R-68); wrong citation of u1-final-status corrected here and in SAVINGS_REPORT.md; R-35 resolved by reading; R-21 hashes match git log. Still UNVERIFIED: U1 findings M7/M9/M11, AEVE_CHECKOUT_DIRTY, resolving commits of R-66/R-67, pkill damage.
+
+## 2026-11-11 U6-3 QA registry and scope note
+
+Registry regenerated after the U6-3 documents and the GPT-PM scope note added. Tests NOT_RUN.
