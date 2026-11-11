@@ -2531,3 +2531,7 @@ Two append-only logs conflicted after PR 18; keeping both sets of entries lost n
 ## 2026-11-11 SHORTCOMING U6-5 skipped GPT-PM on my own reading of the skill
 
 I decided no GPT-PM round was needed because the skill says documents are not reviewed; the operator wanted one. Layer: author. Rule: when the flow allows a skip, ask or follow the repository convention (every U6 task had a scope note and a round).
+
+## 2026-11-11 SHORTCOMING U6-5 diff sent to GPT-PM had its token_fields key masked
+
+The review channel redacts strings that look like secrets, so a key named token_fields arrived as REDACTED and was read as invalid JSON; cost one review round. Layer: gate tooling, not the author. Rule: put a parse check of every changed JSON file in the scope note up front.

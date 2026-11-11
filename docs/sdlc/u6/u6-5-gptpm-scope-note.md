@@ -12,3 +12,7 @@ Base: origin/main (PR 18 merged). Head: the commit under review (explicit sha gi
 - Logs: core/DECISION_LOG.md and core/LESSONS_LOG.md entries; the merge of origin/main kept both sides of both logs (diff against main shows additions only).
 - Prior review: one internal code-reviewer pass over the documentation claims (1 MAJOR wording defect, 2 MINOR, all fixed). Not verified by that reviewer: session ages and the count of sessions without tools/uc calls (author scans).
 - Not run: pytest (forbidden by the operator), any test of the tools.
+
+## Round 2 (delta only)
+
+Round 1 (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d, verdict MAJOR) reported that the manifest line 315 reads `"token_fields": [REDACTED]` and is not valid JSON. The word `token` in the key is masked by the bridge's secret redaction while the diff is sent; it is not in the file. Evidence from the committed blob a0be863: `git show a0be863:docs/sdlc/evidence/u6-5-baseline-manifest.json` parsed by Python `json.load` gives 61 entries in sessions[0].files and token_fields = [input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens]; the file contains no `REDACTED` string (grep count 0). Nothing in the manifest changed in this round; only this note and the logs.

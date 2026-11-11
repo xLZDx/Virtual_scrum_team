@@ -3281,3 +3281,7 @@ PR 19 conflicted with main (PR 18) only in the two append-only logs. Resolution:
 ## 2026-11-11 U6-5 GPT-PM review requested by the operator
 
 The operator ordered one GPT-PM round for PR 19 although the change has no code; this supersedes the earlier entry that no round was needed. Scope note: docs/sdlc/u6/u6-5-gptpm-scope-note.md.
+
+## 2026-11-11 U6-5 GPT-PM round 1 finding was a transmission mask
+
+Round 1 verdict MAJOR (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d): the manifest looked invalid because the bridge masks the word token in the diff. Verified the committed blob is valid JSON (61 files, no REDACTED string). Round 2 sent with that evidence; manifest unchanged.
