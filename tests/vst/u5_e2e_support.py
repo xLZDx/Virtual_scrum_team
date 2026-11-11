@@ -21,9 +21,14 @@ from __future__ import annotations
 import copy
 import dataclasses
 import hashlib
+import importlib
+import importlib.util
+import inspect
 import json
 import os
+import socket
 import stat
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
@@ -43,7 +48,7 @@ from tools.vst.pipeline_migration import migrate_pipeline
 from tools.vst.pipeline_state import PipelineState
 
 from .e1e4_helpers import (
-    EPOCH, HEAD, HEAD2, KEY, MANIFEST_SHA, OPERATOR_KEY, STORY, SUPERVISOR_KEY, WRONG_KEY, FakeClock,
+    EPOCH, HEAD, KEY, MANIFEST_SHA, OPERATOR_KEY, STORY, SUPERVISOR_KEY, WRONG_KEY, FakeClock,
     happy_receipts, manifest, new_env, receipt,
 )
 
@@ -87,6 +92,36 @@ class ModelGuard:
         return self.invoke("fixer")
 
 
+def install_escape_guards(monkeypatch: Any, guard: ModelGuard) -> list[tuple[str, Any, str]]:
+    """Patch the REAL escape points through which real code could reach a model, AEVE or the network.
+
+    Every patched name calls `guard.invoke(name)`, which counts and raises AssertionError('model invoked'). The
+    stories never need them (FakeAeve replaces the AEVE call at the injected seam), so the count stays 0 unless
+    real code escapes. Returns (name, owner, attribute) triples so a test can call each seam directly.
+    """
+    targets: list[tuple[str, Any, str]] = [
+        ("subprocess.Popen", subprocess, "Popen"),
+        ("subprocess.run", subprocess, "run"),
+        ("socket.socket.connect", socket.socket, "connect"),
+        ("adapter.run_review", router.adapter, "run_review"),       # tools/uc/adapter.py: the real AEVE CLI entry
+        ("router._call", router, "_call"),                          # router.review's AEVE execution seam
+        ("aeve_probe.probe", router.aeve_probe, "probe"),           # runs git and the AEVE CLI
+    ]
+    for module_name, attr in (("anthropic", "Anthropic"), ("anthropic", "AsyncAnthropic"),
+                              ("openai", "OpenAI"), ("openai", "AsyncOpenAI")):
+        if importlib.util.find_spec(module_name) is not None:
+            module = importlib.import_module(module_name)
+            if hasattr(module, attr):
+                targets.append((f"{module_name}.{attr}", module, attr))
+    installed = []
+    for name, owner, attr in targets:
+        def escape(*args: Any, _name: str = name, **kwargs: Any) -> Any:
+            return guard.invoke(_name)
+        monkeypatch.setattr(owner, attr, escape)
+        installed.append((name, owner, attr))
+    return installed
+
+
 def resolve_model_residual(report: Mapping[str, Any], guard: ModelGuard, *, enabled: bool) -> list[str]:
     """The model half of a LOCAL_PLUS_MODEL role. Disabled: nothing runs and the roles stay open."""
     open_roles = [role["role"] for role in report["roles"] if role["model_residual"]]
@@ -98,16 +133,16 @@ def resolve_model_residual(report: Mapping[str, Any], guard: ModelGuard, *, enab
 class FakeAeve:
     """Canned AEVE `review` answer in the shape `adapter.check_response` requires; no process, no model."""
 
-    def __init__(self, guard: ModelGuard, *, model_fallback: bool, executor_status: Mapping[str, str],
+    def __init__(self, guard: ModelGuard, *, aeve_model_fallback: bool, executor_status: Mapping[str, str],
                  raw_findings: tuple[tuple[str, str], ...]) -> None:
         self.guard = guard
-        self.model_fallback = model_fallback
+        self.aeve_model_fallback = aeve_model_fallback
         self.executor_status = dict(executor_status)
         self.raw_findings = raw_findings
         self.calls = 0
 
     def run(self, aeve_request: Mapping[str, Any]) -> tuple[dict, int]:
-        if self.model_fallback:
+        if self.aeve_model_fallback:
             self.guard.invoke("aeve-model-fallback")
         self.calls += 1
         executors = list(aeve_request["executor_ids"])
@@ -125,7 +160,7 @@ class FakeAeve:
         response = {
             "status": status, "request_id": aeve_request["request_id"], "head": aeve_request["base_revision"],
             "snapshot_sha256": SNAP, "iteration_id": f"it-{self.calls}", "executor_ids": executors,
-            "results": results, "findings": findings, "uncovered": [], "llm_calls": self.guard.count,
+            "results": results, "findings": findings, "uncovered": [], "llm_calls": 0,   # literal: the AEVE contract value, independent of the guard
             "executed_project_code": False, "source_modified": False, "dirty": False,
         }
         return response, 0 if status == "COMPLETE" else 3
@@ -193,16 +228,23 @@ def make_isolation(tmp_path: Path) -> wg.IsolationContext:
         info.st_file_attributes = 0
         return info
 
-    return wg.IsolationContext(worktree, main, False, BASE, HEAD, lstat=lstat)
+    return wg.IsolationContext(worktree, main, False, BASE, HEAD, lstat=lstat, realpath=lambda p: p)
 
 
-def static_report(*, with_unknown_rule: bool) -> AnalysisReport:
-    rules = list(CATALOG_REQUIRED) + ([UNKNOWN_RULE] if with_unknown_rule else [])
+UNSUPPORTED_RULE = "PY-IDENTITY-LITERAL-COMPARISON"   # a REQUIRED catalog rule that the analyzer cannot check
+HARNESS_PROFILE_ID = "g2.python-rules"                # harness constant: hard-coded in the fake analyzer report
+
+
+def static_report(*, with_unknown_rule: bool, with_unsupported_rule: bool = False) -> AnalysisReport:
+    rules = sorted(list(CATALOG_REQUIRED) + ([UNKNOWN_RULE] if with_unknown_rule else []))
+    unsupported = [UNSUPPORTED_RULE] if with_unsupported_rule else []
+    checked = [r for r in rules if r not in unsupported]
     return AnalysisReport(body={
-        "analyzer_id": "aeve", "analyzer_version": "1", "analyzer_sha256": "1" * 64, "profile_id": "g2.python-rules",
+        "analyzer_id": "aeve", "analyzer_version": "1", "analyzer_sha256": "1" * 64, "profile_id": HARNESS_PROFILE_ID,
         "profile_sha256": "2" * 64, "source_tree_sha256": "3" * 64, "analysis_scope": list(PATHS),
-        "coverage": "FULL", "covered_rules": sorted(rules), "unsupported_rules": [],
-        "rule_statuses": [{"rule_id": r, "status": "SUPPORTED_AND_CHECKED"} for r in sorted(rules)],
+        "coverage": "PARTIAL" if unsupported else "FULL", "covered_rules": checked, "unsupported_rules": unsupported,
+        "rule_statuses": [{"rule_id": r, "status": "UNSUPPORTED" if r in unsupported else "SUPPORTED_AND_CHECKED"}
+                          for r in rules],
         "findings": []})
 
 
@@ -220,13 +262,16 @@ def lenient_coverage_judge(real_judge: Callable[..., Any]) -> Callable[..., Any]
     """
     drop = {rl.COVERAGE_PARTIAL, rl.DECLARED_EXECUTOR_MISSING, rl.EXIT_NOT_ZERO}
 
+    signature = inspect.signature(real_judge)
+
     def judge(*args: Any, **kwargs: Any) -> Any:
+        declared = signature.bind(*args, **kwargs).arguments["declared"]
         judged = real_judge(*args, **kwargs)
         reasons = tuple(r for r in judged.reasons if r not in drop)
         verdict = judged.verdict
         if not reasons and not judged.findings:
             verdict = "CLEAN"
-        covered = tuple(sorted(set(judged.covered) | set(kwargs["declared"])))
+        covered = tuple(sorted(set(judged.covered) | set(declared)))
         return dataclasses.replace(judged, verdict=verdict, reasons=reasons, covered=covered, missing=())
 
     return judge
@@ -239,7 +284,8 @@ class StorySpec:
 
     roles: tuple[str, ...] = CLEAN_ROLES
     cap: int = 1
-    model_fallback: bool = False
+    model_fallback: bool = False          # the model half of LOCAL_PLUS_MODEL roles (residual resolver)
+    aeve_model_fallback: bool = False     # the fake AEVE falls back to a model (independent of the flag above)
     model_fixer: bool = False
     force_package: bool = False
     # role table drift
@@ -254,6 +300,8 @@ class StorySpec:
     verify_report: Callable[[Any], Any] | None = None
     # static rule coverage
     unknown_rule: bool = False
+    unsupported_rule: bool = False
+    require_clean_coverage: bool = True   # harness check; a control relaxes it by hand
     catalog_admits_unknown: bool = False
     # receipts and gate
     forge_receipt: bool = False
@@ -278,6 +326,9 @@ class Outcome:
     gate_decision: Any = None
     package_result: Any = None
     worker_verdict: Any = None
+    role_problems: list = field(default_factory=list)
+    coverage_result: Any = None
+    coverage_error: Any = None
 
     def note(self, stage: str, text: str) -> None:
         if stage not in self.trace:
@@ -295,10 +346,16 @@ def _blocked_envelope(request_id: str, reason: str, detail: str) -> dict:
 
 
 def run_story(tmp_path: Path, spec: StorySpec | None = None, *, guard: ModelGuard | None = None) -> Outcome:
-    """Run one story through the real stages and stop at the first stage that does not pass."""
+    """Run one story through the real stages and stop at the first stage that does not pass.
+
+    The gate stage is independent of the story's review: its v1 receipts come from e1e4_helpers and carry
+    candidate_head == e1e4_helpers.HEAD, which is the same value as the story head used everywhere else.
+    """
     spec = spec or StorySpec()
     guard = guard or ModelGuard()
-    out = Outcome(guard=guard, config=SimpleNamespace(model_fallback=spec.model_fallback, fixer_is_model=spec.model_fixer))
+    out = Outcome(guard=guard, config=SimpleNamespace(model_fallback=spec.model_fallback,
+                                                      aeve_model_fallback=spec.aeve_model_fallback,
+                                                      fixer_is_model=spec.model_fixer))
     root = str(tmp_path)
     changed = list(PATHS)
 
@@ -308,6 +365,7 @@ def run_story(tmp_path: Path, spec: StorySpec | None = None, *, guard: ModelGuar
     table = fixture["table"]
     router.check_table(table)
     problems = uc_role_table.validate_role_table(table, fixture["inventory"], fixture["matrix"], fixture["probe"])
+    out.role_problems = list(problems)
     out.note("role_table", "; ".join(problems) if problems else "table matches the probed AEVE checkout")
     if problems:
         return out.stop("role_table", "BLOCKED")
@@ -323,23 +381,34 @@ def run_story(tmp_path: Path, spec: StorySpec | None = None, *, guard: ModelGuar
         return out.stop("worker_gate", worker.verdict)
 
     # stage 3: static rule coverage against the required-rule catalog (tools/vst/rule_coverage.py)
-    report = static_report(with_unknown_rule=spec.unknown_rule)
+    report = static_report(with_unknown_rule=spec.unknown_rule, with_unsupported_rule=spec.unsupported_rule)
     try:
         coverage = rc.build_static_coverage(report, static_catalog(admit_unknown=spec.catalog_admits_unknown))
-        out.note("rule_coverage", f"profile={report.body['profile_id']} coverage={coverage['fields']['coverage']} "
-                                  f"clean={coverage['clean']}")
     except rc.CoverageError as exc:
+        out.coverage_error = exc
         out.note("rule_coverage", f"profile={report.body['profile_id']} {exc}")
+        return out.stop("rule_coverage", "BLOCKED")
+    out.coverage_result = coverage
+    out.note("rule_coverage", f"profile={report.body['profile_id']} coverage={coverage['fields']['coverage']} "
+                              f"clean={coverage['clean']}")
+    if spec.require_clean_coverage and not coverage["clean"]:
         return out.stop("rule_coverage", "BLOCKED")
 
     # stage 4: review loop; every submit is AEVE (fake) -> adapter.check_response -> router.normalize -> signature
-    aeve = FakeAeve(guard, model_fallback=spec.model_fallback, executor_status=spec.executor_status,
+    aeve = FakeAeve(guard, aeve_model_fallback=spec.aeve_model_fallback, executor_status=spec.executor_status,
                     raw_findings=spec.raw_findings)
     executor_ids = executors_of(table, spec.roles)
     signatures: dict[str, str] = {}
     sign_key = WRONG_KEY if spec.forge_report else KEY
 
     def submit(request: rl.ReviewRequest) -> dict:
+        try:
+            return _submit(request)
+        except Exception as exc:  # noqa: BLE001 - recorded, then re-raised to the loop
+            out.note("submit_error", f"{type(exc).__name__}: {exc}")
+            raise
+
+    def _submit(request: rl.ReviewRequest) -> dict:
         role_request = {"schema_version": "uc.role-request.v1", "request_id": request.request_id, "root": root,
                         "base_revision": request.head, "changed_paths": list(changed), "roles": list(spec.roles),
                         "purpose": "receipt"}

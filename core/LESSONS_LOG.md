@@ -2379,3 +2379,7 @@ Several checks (the stale head test in `gate.evaluate`, the pin comparison insid
 ## 2026-11-11 SHORTCOMING U5-6 no model-fallback switch exists in the repository
 
 The acceptance text assumes a "model fallback" flag, but neither `tools/uc` nor `tools/vst` has one; only the harness seams are guarded, so "model-call count 0" proves nothing about the real AEVE or host. Layer: grep before design. Rule: state in the evidence what the guard covers, and add a real switch before claiming a model-free run of the real pipeline (U5-7).
+
+## 2026-11-11 FAILURE U5-6 the model-call count was true by construction
+
+Reviewers found: the guard counted only calls the harness made itself, the model flag was compared with the knob that set it, `llm_calls` was fed from the guard, an unsupported rule and an unknown rule were conflated, and rows asserted substrings of pooled notes. Layer: author design, caught by python and test reviewers after commit. Rule: a "zero" assertion needs a positive test showing the counter can move, patch the real escape points, take expected values from literals in the test, and assert on structured outputs, not on a joined text.
