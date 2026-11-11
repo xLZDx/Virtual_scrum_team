@@ -2467,3 +2467,7 @@ This time the build_registry entry was in the implementation commit, so regenera
 ## 2026-11-11 SUCCESS scope note names the missing operator inputs
 
 The NOT_RUN report is explicit about what is missing so the reviewer judges the generator, not the absent data. Rule: say what blocks a measurement in the scope note.
+
+## 2026-11-11 SHORTCOMING the review CLI could not parse an APPROVE reply
+
+For U6-2 the verdict field was UNRECOGNIZED while the reply said APPROVE; I relied on the reply text and said so. Layer: gate parser. Rule: when the parsed verdict differs from the reply text, record both and do not claim a tool-confirmed approval.

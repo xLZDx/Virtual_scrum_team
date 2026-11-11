@@ -3217,3 +3217,7 @@ Registry rebuilt with the savings report tests; GPT-PM review next. The savings 
 ## 2026-11-11 U6-2 GPT-PM scope note
 
 Added docs/sdlc/u6/u6-2-gptpm-scope-note.md with scope, limits and the operator inputs still missing.
+
+## 2026-11-11 U6-2 GPT-PM APPROVE (parser said UNRECOGNIZED)
+
+GPT-PM reply text: VERDICT: APPROVE, 0 BLOCKER, 0 MAJOR, head 42ddaa3 base 8b654cc (reply 76ca26d2-bd28-554b-b8d9-44de6abba6a5). The CLI verdict field read UNRECOGNIZED for this reply although the text says APPROVE; recorded as stated in the reply, parser behaviour not investigated. MINOR: the JSON/markdown pair is not fully atomic when both files already exist (two os.replace calls); already in the scope note. Real savings stay NOT_RUN.
