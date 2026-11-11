@@ -3257,3 +3257,7 @@ PROJECT_PLAN.md: U6-1..U6-4 ACCEPTED on static review (U6-2 as a NOT_RUN measure
 ## 2026-11-11 R-27 .gitattributes scan allows line-ending attributes
 
 Operator decision (2026-11-11): U5-2 no longer refuses `text`, `eol=lf|crlf`, `-text`, `!text`, `text=auto`, `-eol`, `!eol` in .gitattributes or info/attributes; it still refuses `filter`, `ident`, `working-tree-encoding`, `crlf`, `export-subst`, `diff=`/`merge=` drivers, any other `text`/`eol` spelling and malformed quoted patterns. Change in tools/vst/patch_proposals.py (`_scan_attribute_text`); tests in tests/vst/test_u5_patch_proposals.py and docs/sdlc/u5/ updated; RETROSPECTIVE rows R-01 and R-27 marked FIXED_IN_CODE. Tests NOT_RUN (operator ban); the real AEVE-driven change is NOT_RUN until the U5-7 driver is re-run.
+
+## 2026-11-11 R-27 QA registry
+
+Registry regenerated after the R-27 tests; tests NOT_RUN.
