@@ -2547,3 +2547,7 @@ The first link_mode.py trusted the available flag in catalog/link_mode.json, so 
 ## 2026-11-12 SUCCESS LINK-1 one remediation batch covered code, tests and docs
 
 Two reviewers named the same weak point (router flag) plus lone-surrogate and CLI exit-code gaps; one batch to the implementer and one to the test author closed them, and a second read found no BLOCKER or MAJOR. Nothing was run (operator ban), so all results are by reading and hand-tracing. Rule: send reviewer findings to the code author first, then to the test author, in that order.
+
+## 2026-11-12 SUCCESS LINK-1 registry regenerated after a clean commit of the test file
+
+The builder needs a clean tests tree and a category entry first, so the sequence entry commit, then regenerate, then separate commit worked on the first try. The large diff was checked line by line (one deletion). Rule: inspect a generated diff for deletions before committing it.

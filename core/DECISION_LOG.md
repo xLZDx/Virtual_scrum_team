@@ -3293,3 +3293,7 @@ GPT-PM round 2: VERDICT APPROVE, head 6e05df0, base 6dc50d0 (reply 8ffdf344-6bfa
 ## 2026-11-12 LINK-1 VST to AEVE link mode skeleton
 
 Decision (operator, AskUserQuestion): build the mode switch skeleton now. Modes: gates (current U1-U6 scheme, available) and router (AEVE does checks, VST only routes reports; declared but refused until AEVE S20-T07 and S20-T08 exist). Evidence: python-reviewer verification round found no BLOCKER or MAJOR; tests written and hand-traced, NOT_RUN. Nothing reads the mode yet.
+
+## 2026-11-12 LINK-1 registry regeneration
+
+The QA categories registry was regenerated with python -m tools.qa.build_registry --write after the test file and its category entry were committed (the builder refuses a dirty tree). Diff checked: one source_head replacement plus new entries for tests/vst/test_link_mode.py.
