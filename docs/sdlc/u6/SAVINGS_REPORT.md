@@ -21,9 +21,9 @@ A number appears only when it comes from files that exist and whose SHA-256 matc
 
 Searches made: Glob of the repository for `*baseline*`, `*measure*`, `*paired*` (only the two U1-1 evidence files above, the scripts and their tests matched); `git ls-files` filtered for `paired`, `current-manifest`, `price` (nothing); a search under `C:/Users/koros/.claude` (depth 2) for `*price*` and `*paired*` (nothing). U1 recorded the same state: `docs/sdlc/evidence/u1-final-status-20261108.md` and the U1-8 row of `PROJECT_PLAN.md` say that no real paired measurement exists, that the baseline session set was not chosen, and that the residual-only run does not exist.
 
-## Commands run and output (verbatim)
+## Commands run and output (abridged)
 
-Interpreter `C:/Python314/python.exe -s`, `PYTHONPATH` = the repository root, run from the repository root. Output files went to the session scratchpad, not into the repository.
+Interpreter `C:/Python314/python.exe -s`, `PYTHONPATH` = the repository root, run from the repository root. Output files went to the session scratchpad, not into the repository. The only abridgement: the scratchpad directory (`C:/Users/koros/AppData/Local/Temp/claude/a1d92f0a4c8fdec9/7c226845-5437-4ece-b7f8-718cbe5ae8c8/scratchpad/u6_2`) is written `$S`, and `$P` stands for `C:/Users/koros/.claude/projects/D--Repo`. Runs 2 and 3 were repeated after the remediation batch (new refusal codes, atomic output); the output was identical.
 
 1. Existing U1-1 tool on the baseline manifest:
 
@@ -37,16 +37,19 @@ Exit code 2. The main transcript of the baseline session changed after the manif
 2. This report generator, no current manifest and no paired-task file:
 
 ```
-python -s -m tools.uc.savings_report --baseline-manifest docs/sdlc/evidence/u1-1-baseline-manifest.json --current-manifest <missing file> --project-dir C:/Users/koros/.claude/projects/D--Repo --paired-tasks <missing file> --out-json A.json --out-md A.md
-{"out_json": "...\\A.json", "out_md": "...\\A.md", "refusals": ["MISSING_CURRENT"], "status": "NOT_RUN"}
+python -s -m tools.uc.savings_report --baseline-manifest docs/sdlc/evidence/u1-1-baseline-manifest.json --current-manifest $S/none-current.json --project-dir $P --paired-tasks $S/none-pairs.json --out-json $S/A.json --out-md $S/A.md
+{"out_json": "$S\\A.json", "out_md": "$S\\A.md", "refusals": ["MISSING_CURRENT"], "status": "NOT_RUN"}
 ```
+
+(`$S/none-current.json` and `$S/none-pairs.json` do not exist.)
 
 Exit code 2.
 
 3. Same, with the baseline manifest given as the current manifest (to show the verification step):
 
 ```
-{"out_json": "...\\B.json", "out_md": "...\\B.md", "refusals": ["HASH_MISMATCH"], "status": "NOT_RUN"}
+python -s -m tools.uc.savings_report --baseline-manifest docs/sdlc/evidence/u1-1-baseline-manifest.json --current-manifest docs/sdlc/evidence/u1-1-baseline-manifest.json --project-dir $P --paired-tasks $S/none-pairs.json --out-json $S/B.json --out-md $S/B.md
+{"out_json": "$S\\B.json", "out_md": "$S\\B.md", "refusals": ["HASH_MISMATCH"], "status": "NOT_RUN"}
 ```
 
 Exit code 2. The generated report body: status NOT_RUN, refusal `HASH_MISMATCH` (baseline manifest, `557da842-4774-4321-afaa-c4fe8ecf9f85.jsonl`), "No numbers are shown: nothing was measured", `roles` empty. Cost: NOT_RUN (`NO_MEASUREMENT`).
@@ -79,6 +82,8 @@ and replace this document with the generated markdown plus the command line and 
 
 - The number of paired tasks is stated in the report; with a handful of pairs there is no variance estimate and no statistical claim.
 - Same-model requirement as above.
+- Sign convention: `delta` = after - before (negative means fewer tokens or lower cost after); `saving` = before - after, per field (positive means fewer). Neither is summed across fields.
+- A role paired in one task but present on one side only in another is refused as a whole (`ROLE_ONE_SIDED`).
 - Cache fields depend on cache warmth and session order; they are reported separately and never merged with the other fields into one saving figure.
 - The unit of pairing is a whole session; unrelated work inside a session is counted.
 - Roles present on one side only are listed as unpaired and carry no numbers.

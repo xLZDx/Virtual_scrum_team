@@ -32,7 +32,16 @@ Rules
     has no model) and carries no numbers. If no role is left, the report is NOT_RUN.
   * The four token fields are reported separately (input, output, cache read, cache creation) and never summed
     into one number. Sums across tasks are made field by field.
-  * Roles present on one side only are listed as unpaired and carry no numbers.
+  * Roles present on one side only are listed as unpaired and carry no numbers. A role that is paired in one task
+    but present on one side only in another is refused as a whole (ROLE_ONE_SIDED).
+  * When several refusal codes hit one role the priority is MODEL_MISMATCH, then MODEL_UNKNOWN, then
+    ROLE_ONE_SIDED, whatever the task order; the details of the winning code are joined in sorted order.
+  * ``delta`` = after - before (negative means fewer tokens / lower cost after); ``saving`` = before - after,
+    per field (positive means fewer). Both are kept per field. The overall cost status is MEASURED (every role
+    priced), PARTIAL (some roles priced) or NOT_RUN.
+  * The pinned hashes are verified again after the model sets are read, so counts and models describe one state.
+  * An unreadable ``--paired-tasks`` file gives PAIRED_TASKS_UNREADABLE. The CLI writes the JSON and the markdown
+    through temp files and replaces both; if a write fails, neither new file is left behind.
   * ``build_savings_report`` does not raise for expected failures; any unexpected exception becomes the code
     INTERNAL_ERROR (exception type name only).
 
@@ -48,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -65,6 +75,8 @@ MISSING_CURRENT = "MISSING_CURRENT"
 MANIFEST_UNREADABLE = "MANIFEST_UNREADABLE"
 PROJECT_DIR_MISSING = "PROJECT_DIR_MISSING"
 NO_PAIRED_TASKS = "NO_PAIRED_TASKS"
+PAIRED_TASKS_UNREADABLE = "PAIRED_TASKS_UNREADABLE"
+ROLE_ONE_SIDED = "ROLE_ONE_SIDED"
 PAIRED_TASK_INVALID = "PAIRED_TASK_INVALID"
 SESSION_NOT_IN_MANIFEST = "SESSION_NOT_IN_MANIFEST"
 PAIR_NOT_DISTINCT = "PAIR_NOT_DISTINCT"
@@ -84,6 +96,15 @@ NOT_RUN = "NOT_RUN"
 
 Pairs = tuple[tuple[str, Any], ...]
 
+DELTA_CONVENTION = "after - before; negative means fewer tokens/lower cost after"
+SAVING_CONVENTION = "saving = before - after, per field; positive means fewer tokens/lower cost after"
+# when several refusal codes hit one role, the first code in this list wins, whatever the task order
+ROLE_REFUSAL_PRIORITY = (MODEL_MISMATCH, MODEL_UNKNOWN, ROLE_ONE_SIDED)
+
+
+class PairedTasksUnreadable:
+    """Passed as ``paired_tasks`` when the paired-task file could not be read or parsed (CLI)."""
+
 
 @dataclass(frozen=True)
 class RoleSavings:
@@ -93,10 +114,11 @@ class RoleSavings:
     before: tuple[tuple[str, int], ...]  # the four fields, summed over the paired tasks, field by field
     after: tuple[tuple[str, int], ...]
     delta: tuple[tuple[str, int], ...]  # after - before; negative = fewer tokens
+    saving: tuple[tuple[str, int], ...]  # before - after per field; positive = fewer tokens
     verdicts: tuple[tuple[str, str], ...]  # task_id -> measure.compare verdict, or NOT_RUN
     cost_status: str  # MEASURED or NOT_RUN
     cost_reason: str
-    cost: tuple[tuple[str, str], ...]  # (before, after, delta) as decimal strings; empty when NOT_RUN
+    cost: tuple[tuple[str, str], ...]  # (before, after, delta, saving) as decimal strings; empty when NOT_RUN
 
 
 @dataclass(frozen=True)
@@ -117,6 +139,8 @@ class SavingsReport:
         return {
             "status": self.status,
             "token_fields": list(TOKEN_FIELDS),
+            "delta_convention": DELTA_CONVENTION,
+            "saving_convention": SAVING_CONVENTION,
             "refusals": [{"code": c, "detail": d} for c, d in self.refusals],
             "paired_task_ids": list(self.paired_task_ids),
             "unpaired_roles": list(self.unpaired_roles),
@@ -127,6 +151,7 @@ class SavingsReport:
                     "before": dict(r.before),
                     "after": dict(r.after),
                     "delta": dict(r.delta),
+                    "saving": dict(r.saving),
                     "verdicts": dict(r.verdicts),
                     "cost": {"status": r.cost_status, "reason": r.cost_reason, **dict(r.cost)},
                 }
@@ -175,6 +200,8 @@ def _session(manifest: dict, session_id: str) -> dict | None:
 
 
 def _validate_pairs(paired_tasks: object, baseline: dict, current: dict) -> list[dict]:
+    if isinstance(paired_tasks, PairedTasksUnreadable):
+        raise _Refuse(PAIRED_TASKS_UNREADABLE, "the paired-task file could not be read or parsed")
     if not isinstance(paired_tasks, (list, tuple)) or not paired_tasks:
         raise _Refuse(NO_PAIRED_TASKS, "no paired tasks supplied")
     seen_tasks: set[str] = set()
@@ -245,7 +272,13 @@ def _measure_side(session: dict, project_dir: pathlib.Path, side: str) -> tuple[
         report = tb.compute(_sub_manifest(session), project_dir)
     except tb.BaselineNotRun as exc:
         raise _Refuse(exc.reason, f"{side} session {session.get('session_id')}: {exc.detail}") from exc
-    return report, _models_by_role(session, project_dir)
+    models = _models_by_role(session, project_dir)
+    # the counts and the model sets must describe the same bytes: pin the hashes again after the second read
+    try:
+        tb.verify_manifest(_sub_manifest(session), project_dir)
+    except tb.BaselineNotRun as exc:
+        raise _Refuse(exc.reason, f"{side} session {session.get('session_id')} changed while read: {exc.detail}") from exc
+    return report, models
 
 
 def _verdicts(role_result_path: object, before: dict, after: dict) -> dict[str, str]:
@@ -325,7 +358,7 @@ def _limits(n_tasks: int, unpaired: Sequence[str], refused: Sequence[str]) -> tu
         "Usage is taken from the pinned transcripts as recorded; the orchestrator role holds all main-transcript "
         "usage of the session.",
         "Unpaired roles (present on one side only, no numbers): " + (", ".join(sorted(unpaired)) or "none") + ".",
-        "Roles refused for model reasons (no numbers): " + (", ".join(sorted(refused)) or "none") + ".",
+        "Roles refused (model or pairing reasons, no numbers): " + (", ".join(sorted(refused)) or "none") + ".",
         "Cost is computed only from a supplied price table with a source; no price is built in.",
     ]
     return tuple(lines)
@@ -368,34 +401,42 @@ def _build(baseline_path: object, current_path: object, project_dir: object, pai
 
     # role -> accumulated data; refused roles are kept out of the numbers
     sums: dict[str, dict] = {}
-    refused: dict[str, tuple[str, str]] = {}
-    unpaired: set[str] = set()
+    hits: dict[str, dict[str, set[str]]] = {}  # role -> refusal code -> details (sets: order independent)
+    one_sided: dict[str, set[str]] = {}  # role -> tasks where it is present on one side only
     for pair in pairs:
+        task = pair["task_id"]
         b_report, b_models = _measure_side(pair["before"], pdir, "baseline")
         a_report, a_models = _measure_side(pair["after"], pdir, "current")
         verdicts = _verdicts(pair["role_result"], b_report, a_report)
         b_roles, a_roles = b_report["roles"], a_report["roles"]
-        for role in sorted(set(b_roles) ^ set(a_roles)):
-            unpaired.add(role)
+        for role in set(b_roles) ^ set(a_roles):
+            one_sided.setdefault(role, set()).add(task)
         for role in sorted(set(b_roles) & set(a_roles)):
             bm, am = b_models.get(role, set()), a_models.get(role, set())
             if "" in bm or "" in am or not bm or not am:
-                refused.setdefault(role, (MODEL_UNKNOWN, f"task {pair['task_id']}: a counted message has no model"))
+                hits.setdefault(role, {}).setdefault(MODEL_UNKNOWN, set()).add(f"task {task}: a counted message has no model")
                 continue
             if bm != am:
-                refused[role] = (MODEL_MISMATCH, f"task {pair['task_id']}: before {sorted(bm)} after {sorted(am)}")
+                hits.setdefault(role, {}).setdefault(MODEL_MISMATCH, set()).add(
+                    f"task {task}: before {sorted(bm)} after {sorted(am)}")
                 continue
             acc = sums.setdefault(role, {"tasks": [], "models": set(), "before": dict.fromkeys(TOKEN_FIELDS, 0),
-                                         "after": dict.fromkeys(TOKEN_FIELDS, 0), "verdicts": {}, "per_task": []})
-            acc["tasks"].append(pair["task_id"])
+                                         "after": dict.fromkeys(TOKEN_FIELDS, 0), "verdicts": {}})
+            acc["tasks"].append(task)
             acc["models"] |= bm
             for field in TOKEN_FIELDS:
                 acc["before"][field] += b_roles[role][field]
                 acc["after"][field] += a_roles[role][field]
-            acc["verdicts"][pair["task_id"]] = verdicts.get(role) or verdicts.get("") or NOT_RUN
-            acc["per_task"].append((bm, {f: b_roles[role][f] for f in TOKEN_FIELDS},
-                                    {f: a_roles[role][f] for f in TOKEN_FIELDS}))
-    for role in refused:  # a role refused in any task is refused as a whole: partial sums would mislead
+            acc["verdicts"][task] = verdicts.get(role) or verdicts.get("") or NOT_RUN
+    unpaired = set(one_sided)
+    for role, tasks in one_sided.items():
+        if role in sums:  # paired in one task, one-sided in another: partial sums would mislead
+            hits.setdefault(role, {}).setdefault(ROLE_ONE_SIDED, set()).add(
+                f"paired in {sorted(sums[role]['tasks'])}, present on one side only in {sorted(tasks)}")
+    refused: dict[str, tuple[str, str]] = {}
+    for role, by_code in hits.items():
+        code = next(c for c in ROLE_REFUSAL_PRIORITY if c in by_code)
+        refused[role] = (code, "; ".join(sorted(by_code[code])))
         sums.pop(role, None)
 
     refusals = [(code, f"role {role}: {detail}") for role, (code, detail) in sorted(refused.items())]
@@ -408,10 +449,11 @@ def _build(baseline_path: object, current_path: object, project_dir: object, pai
                              limits=_limits(len(pairs), unpaired, refused), inputs=tuple(inputs))
 
     roles = []
-    any_cost = False
+    n_priced = 0
     for role in sorted(sums):
         acc = sums[role]
         delta = {f: acc["after"][f] - acc["before"][f] for f in TOKEN_FIELDS}
+        saving = {f: acc["before"][f] - acc["after"][f] for f in TOKEN_FIELDS}
         cost_status, cost_reason, cost = NOT_RUN, price_reason, ()
         if prices is not None:
             if len(acc["models"]) != 1:
@@ -424,20 +466,23 @@ def _build(baseline_path: object, current_path: object, project_dir: object, pai
                 after_cost = _cost(acc["after"], row, prices["unit"])
                 cost_status, cost_reason = MEASURED, ""
                 cost = (("before", _fmt(before_cost)), ("after", _fmt(after_cost)),
-                        ("delta", _fmt(after_cost - before_cost)))
-                any_cost = True
+                        ("delta", _fmt(after_cost - before_cost)),
+                        ("saving", _fmt(before_cost - after_cost)))
+                n_priced += 1
         roles.append(RoleSavings(
             role=role, paired_tasks=tuple(acc["tasks"]), models=tuple(sorted(acc["models"])),
             before=tuple((f, acc["before"][f]) for f in TOKEN_FIELDS),
             after=tuple((f, acc["after"][f]) for f in TOKEN_FIELDS),
             delta=tuple((f, delta[f]) for f in TOKEN_FIELDS),
+            saving=tuple((f, saving[f]) for f in TOKEN_FIELDS),
             verdicts=tuple(sorted(acc["verdicts"].items())),
             cost_status=cost_status, cost_reason=cost_reason, cost=cost))
     return SavingsReport(
         status=MEASURED, refusals=tuple(refusals), roles=tuple(roles),
         paired_task_ids=tuple(p["task_id"] for p in pairs), unpaired_roles=tuple(sorted(unpaired)),
-        cost_status=MEASURED if any_cost else NOT_RUN,
-        cost_reason="" if any_cost else (price_reason or "NO_ROLE_PRICED"),
+        cost_status=(NOT_RUN if not n_priced else MEASURED if n_priced == len(roles) else "PARTIAL"),
+        cost_reason=("SOME_ROLES_UNPRICED" if 0 < n_priced < len(roles)
+                     else "" if n_priced else (price_reason or "NO_ROLE_PRICED")),
         cost_source=prices["source"] if prices else "", cost_currency=prices["currency"] if prices else "",
         limits=_limits(len(pairs), unpaired, refused), inputs=tuple(inputs))
 
@@ -456,13 +501,14 @@ def render_markdown(report: SavingsReport) -> str:
             out += [f"## Role `{role.role}`", "",
                     f"Tasks: {', '.join(role.paired_tasks)}; models: {', '.join(role.models)}; "
                     f"local-first verdicts: " + (", ".join(f"{t}={v}" for t, v in role.verdicts) or "NOT_RUN"), "",
-                    "| token field | before | after | delta (after - before) |", "|---|---:|---:|---:|"]
-            for (f, b), (_, a), (_, dl) in zip(role.before, role.after, role.delta):
-                out.append(f"| {f} | {b} | {a} | {dl} |")
+                    "| token field | before | after | delta (after - before) | saving (before - after) |",
+                    "|---|---:|---:|---:|---:|"]
+            for (f, b), (_, a), (_, dl), (_, sv) in zip(role.before, role.after, role.delta, role.saving):
+                out.append(f"| {f} | {b} | {a} | {dl} | {sv} |")
             if role.cost_status == MEASURED:
                 c = dict(role.cost)
                 out += ["", f"Cost ({report.cost_currency}, source: {report.cost_source}): before {c['before']}, "
-                            f"after {c['after']}, delta {c['delta']}"]
+                            f"after {c['after']}, delta {c['delta']}, saving {c['saving']}"]
             else:
                 out += ["", f"Cost: NOT_RUN ({role.cost_reason})"]
             out.append("")
@@ -472,9 +518,35 @@ def render_markdown(report: SavingsReport) -> str:
     return "\n".join(out)
 
 
-def _write(path: pathlib.Path, text: str) -> None:
-    with path.open("w", encoding="utf-8", newline="\n") as handle:
-        handle.write(text)
+def _write_pair(first: tuple[pathlib.Path, str], second: tuple[pathlib.Path, str]) -> None:
+    """Write both files or neither: temp files first, then replace; a failure removes what this call created."""
+    items = [first, second]
+    temps: list[pathlib.Path] = []
+    existed = [path.exists() for path, _ in items]
+    done: list[int] = []
+    try:
+        for path, text in items:
+            tmp = path.with_name(path.name + f".tmp{os.getpid()}")
+            temps.append(tmp)
+            with tmp.open("w", encoding="utf-8", newline="\n") as handle:
+                handle.write(text)
+        for index, (path, _) in enumerate(items):
+            os.replace(temps[index], path)
+            done.append(index)
+    except OSError:
+        for index in done:
+            if not existed[index]:
+                try:
+                    items[index][0].unlink()
+                except OSError:
+                    pass
+        raise
+    finally:
+        for tmp in temps:
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -487,12 +559,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         pairs: object = json.loads(args.paired_tasks.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        pairs = None  # becomes NO_PAIRED_TASKS
+        pairs = PairedTasksUnreadable()
     report = build_savings_report(args.baseline_manifest, args.current_manifest, args.project_dir, pairs,
                                   args.price_table)
     try:
-        _write(args.out_json, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n")
-        _write(args.out_md, render_markdown(report))
+        _write_pair((args.out_json, json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n"),
+                    (args.out_md, render_markdown(report)))
     except OSError as exc:
         print(json.dumps({"status": NOT_RUN, "reason": "OUTPUT_UNWRITABLE", "detail": type(exc).__name__}))
         return 2

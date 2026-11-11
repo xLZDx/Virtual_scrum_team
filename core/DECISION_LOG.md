@@ -3205,3 +3205,7 @@ GPT-PM APPROVE, 0 BLOCKER, 0 MAJOR, head 1c9c672 base 8c9ab2c (reply 661b3ca6-ff
 ## 2026-11-11 U6-2 savings report generator, report is NOT_RUN
 
 Added tools/uc/savings_report.py (reuses token_baseline and measure; four token fields never combined; cost only from a sourced price table; model mismatch refuses a role), tests/vst/test_u6_savings_report.py, category entry, docs/sdlc/u6/SAVINGS_REPORT.md. The report is NOT_RUN: no after-side manifest, paired-task file or price table exists, and the U1-1 baseline manifest no longer verifies (HASH_MISMATCH, main transcript grew from 6767280 to 6773135 bytes). Tests NOT_RUN.
+
+## 2026-11-11 U6-2 remediation after reviewers
+
+One batch applied: ROLE_ONE_SIDED refuses roles that are one-sided in any task; JSON gets delta_convention and per-field saving; PAIRED_TASKS_UNREADABLE; order-independent refusal precedence; pinned hashes re-verified after model read; JSON+markdown written as an atomic pair; cost status PARTIAL when only some roles are priced (agent addition, accepted). Tests rewritten and NOT_RUN. Limits: a pre-existing first output cannot be restored if the second replace fails; a file changed and restored between reads is not detected.

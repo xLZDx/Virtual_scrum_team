@@ -2455,3 +2455,7 @@ GPT-PM flagged missing execution proof; running the helper once on a temp tree w
 ## 2026-11-11 SHORTCOMING the U1-1 baseline pinned a live session transcript that kept growing
 
 The manifest pinned the main transcript of a session that was still in use, so its hash no longer matches and the baseline cannot be reproduced. Root cause: U1-1 baselined an open session (author, gate did not check closure). Rule: pin only closed or copied transcripts, store a copy with the manifest.
+
+## 2026-11-11 SHORTCOMING first savings report summed a role over only the tasks where it was paired
+
+A role one-sided in one task silently dropped that task, overstating savings; found by python-reviewer. Layer missed: author and tests. Rule: a total over tasks must either cover every task or refuse the role.
