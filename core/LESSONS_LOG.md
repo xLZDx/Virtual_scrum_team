@@ -2311,3 +2311,7 @@ Reviewers found: recipe label unenforced, repo-local git config trusted, no lock
 ## 2026-11-11 SUCCESS registry regenerated for U5-2
 
 Registry regenerated right after the test commit. Rule: regenerate the registry in the same task after any commit that changes a registered test file.
+
+## 2026-11-11 SHORTCOMING reviewers missed attempted-versus-applied mixing
+
+Three reviewers and the author wrote record tests only for ACCEPTED and for early refusals; GPT-PM found that facts gathered before the last stage were counted as applied after a later BLOCKED. Layer: author tests and reviewers. Rule: any figure recorded per run must be derived from the final verified state; test every terminal verdict that can follow the point where the figure was first computed.

@@ -36,3 +36,10 @@ Three reviewers (python, security, tests) reported on 49bbe61; one batch was app
 - Tests: the `doc=None` blocker fixed with a sentinel; gate-stage, rollback, lock, config, recipe, exit-code, override, record tests added; real-git tests (skipped without git) added. All NOT_RUN.
 
 Still open: git commands unproven; a base differing only outside the hunk context is not detected; the lock is advisory.
+
+## GPT-PM verification round
+
+GPT-PM returned one MAJOR: `build_run_record` counted `hunks_by_file` as applied proposal lines although `apply_proposals` had returned BLOCKED after the gate accepted the diff (`DIRTY_WORKTREE`, `JOURNAL_UNAVAILABLE`, `MATERIALIZE_FAILED`, `ROLLED_BACK`, `ROLLBACK_CONFLICT`). Fixed (static only, tests NOT_RUN):
+- `ApplyResult.hunks_by_file` is now set only for ACCEPTED after the verified write; the pre-write counts are `attempted_hunks_by_file` (also in `to_dict`).
+- `build_run_record` counts proposal lines only when the verdict is ACCEPTED and `post_materialize_verified` is true, even if a caller builds an inconsistent result; it adds `applied`, `attempted_proposal_hunks` and `attempted_proposal_lines`, which never enter the fractions.
+- Regression tests with hand-computed numbers (attempted 2 lines, applied 0, model 3, total 3, fractions 0.0 and 1.0): blocked before the write, failed write with rollback, rollback conflict (state UNKNOWN), journal denied, a forged inconsistent result; the accepted case stays 2 proposal and 4 model lines of 6.

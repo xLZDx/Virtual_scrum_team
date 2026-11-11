@@ -544,7 +544,8 @@ class ApplyResult:
     diff_bytes: bytes | None = None
     diff_sha256: str | None = None
     report_sha256: str | None = None
-    hunks_by_file: dict | None = None           # input for change_origin_share (proposal side)
+    hunks_by_file: dict | None = None           # APPLIED hunks: set only for ACCEPTED (verified write); input for change_origin_share
+    attempted_hunks_by_file: dict | None = None  # hunks of the built diff once the gate accepted it; never counted as applied
     no_patch_paths: tuple[str, ...] = ()
     patched_paths: tuple[str, ...] = ()         # files the document proposes a patch for (validated)
     partial: bool = False                       # AEVE marked the document PARTIAL
@@ -566,6 +567,7 @@ class ApplyResult:
             "candidate_head": self.candidate_head, "candidate_tree": self.candidate_tree,
             "changed_paths": list(self.changed_paths), "diff_sha256": self.diff_sha256,
             "report_sha256": self.report_sha256, "hunks_by_file": self.hunks_by_file,
+            "attempted_hunks_by_file": self.attempted_hunks_by_file,
             "no_patch_paths": list(self.no_patch_paths), "patched_paths": list(self.patched_paths),
             "partial": self.partial, "file_digests": self.file_digests,
             "isolation_stage": self.isolation_stage,
@@ -916,7 +918,7 @@ def apply_proposals(
         verdict = wg.gate_worker_change(**gate_args)
         if verdict.verdict != ACCEPTED:
             return _result(verdict.verdict, verdict.reasons, stage, gate=verdict, **facts)
-        facts["hunks_by_file"] = hunk_counts_from_diff(diff)
+        facts["attempted_hunks_by_file"] = hunk_counts_from_diff(diff)  # attempted, not applied, until the verified write
 
         # Stage MATERIALIZE: the only stage that writes the worktree. Re-check, journal, write, verify, roll back on failure.
         stage = "MATERIALIZE"
@@ -966,7 +968,8 @@ def apply_proposals(
             os.unlink(journal)
         except OSError:
             pass
-        return _result(ACCEPTED, verdict.reasons, stage, "MODIFIED", gate=verdict, post_materialize_verified=True, **facts)
+        return _result(ACCEPTED, verdict.reasons, stage, "MODIFIED", gate=verdict, post_materialize_verified=True,
+                       hunks_by_file=facts["attempted_hunks_by_file"], **facts)
     except ProposalError as exc:
         return _result(BLOCKED, [(exc.code, exc.detail)], stage)
     except _GitFail as exc:
@@ -1086,11 +1089,16 @@ def build_run_record(apply_result: object, model_hunks_by_file: object, override
     """JSON-able per-run record: proposal versus model line counts and fractions, shared files, overrides.
 
     ``overrides`` is ``ModelChangeVerdict.overrides``. Raises ValueError on bad input. A run whose
-    proposal was refused or blocked has no applied hunks: its proposal side is empty and the verdict says why.
+    proposal was refused or blocked has no applied hunks: its proposal side is zero and the verdict says why.
+    Proposal lines count only when the verdict is ACCEPTED and ``post_materialize_verified`` is True. What was
+    built and gate-accepted but not (verifiably) written is listed under ``attempted_proposal_hunks`` and
+    ``attempted_proposal_lines``; those never enter the fractions.
     """
     if not isinstance(apply_result, ApplyResult):
         raise ValueError("apply_result must be an ApplyResult")
-    share = change_origin_share(apply_result.hunks_by_file or {}, model_hunks_by_file)
+    applied = apply_result.verdict == ACCEPTED and apply_result.post_materialize_verified is True
+    share = change_origin_share(apply_result.hunks_by_file if applied and apply_result.hunks_by_file else {}, model_hunks_by_file)
+    attempted = _clean_hunks("attempted_hunks_by_file", apply_result.attempted_hunks_by_file or {})
     recorded = [dict(item) for item in (overrides or [])]
     return {
         "schema": RUN_RECORD_SCHEMA,
@@ -1100,6 +1108,9 @@ def build_run_record(apply_result: object, model_hunks_by_file: object, override
         "diff_sha256": apply_result.diff_sha256, "partial": apply_result.partial,
         "post_materialize_verified": apply_result.post_materialize_verified,
         "patched_paths": list(apply_result.patched_paths), "no_patch_paths": list(apply_result.no_patch_paths),
+        "applied": applied,
+        "attempted_proposal_hunks": {path: [list(h) for h in rows] for path, rows in attempted.items()},
+        "attempted_proposal_lines": sum(a + d for rows in attempted.values() for a, d in rows),
         "proposal_lines": share["proposal"]["lines"], "model_lines": share["model"]["lines"],
         "total_lines": share["total_lines"],
         "proposal_fraction": share["proposal_fraction"], "model_fraction": share["model_fraction"],

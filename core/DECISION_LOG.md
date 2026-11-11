@@ -3073,3 +3073,7 @@ Decision: after three reviewers on 49bbe61, patch_proposals.py checks each diff 
 ## 2026-11-11 U5-2 QA registry regenerated
 
 Regenerated docs/qa/categories.json after the U5-2 review fixes so the registry lists tests/vst/test_u5_patch_proposals.py. Tests NOT_RUN.
+
+## 2026-11-11 U5-2 GPT-PM verification round
+
+Decision: ApplyResult.hunks_by_file now holds applied hunks only (ACCEPTED after the verified write); built-but-not-written hunks are attempted_hunks_by_file. build_run_record counts proposal lines only for ACCEPTED with post_materialize_verified true and reports attempted lines separately, outside the fractions. Fixes the GPT-PM MAJOR on attempted-versus-applied mixing after BLOCKED stages that follow gate acceptance. Tests NOT_RUN (operator ban).

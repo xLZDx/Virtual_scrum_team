@@ -1026,6 +1026,94 @@ def test_run_record_for_a_proposal_plus_a_model_change_on_another_path(tmp_path)
     assert record["patched_paths"] == ["src/app.py"] and record["overrides"] == overrides
     assert record["report_sha256"] == result.report_sha256 and record["candidate_head"] == CAND
     assert record["schema"] == "vst-patch-run-record-v1"
+    assert record["applied"] is True and record["attempted_proposal_lines"] == 2
+    assert record["attempted_proposal_hunks"] == {"src/app.py": [[1, 1]]}
+
+
+MODEL_ONLY = {"src/model.py": [(3, 0)]}  # 3 model lines
+
+
+def assert_nothing_applied(result, record):
+    # attempted: one hunk, 1 added + 1 deleted = 2 lines; applied: none; model 3 lines, so total 3
+    assert result.hunks_by_file is None
+    assert result.attempted_hunks_by_file == {"src/app.py": [(1, 1)]}
+    assert record["applied"] is False
+    assert (record["proposal_lines"], record["model_lines"], record["total_lines"]) == (0, 3, 3)
+    assert (record["proposal_fraction"], record["model_fraction"]) == (0.0, 1.0)
+    assert record["attempted_proposal_lines"] == 2 and record["attempted_proposal_hunks"] == {"src/app.py": [[1, 1]]}
+    assert record["files_touched_by_both"] == []
+    assert result.to_dict()["hunks_by_file"] is None and result.to_dict()["attempted_hunks_by_file"] == {"src/app.py": [[1, 1]]}
+
+
+def test_run_record_counts_no_applied_lines_when_blocked_after_the_gate_but_before_the_write(tmp_path, monkeypatch):
+    real_gate = pp.wg.gate_worker_change
+    state = {"n": 0}
+
+    def gate(**kw):
+        state["n"] += 1
+        outcome = real_gate(**kw)
+        if state["n"] == 2:  # gate accepted the real diff; the file is edited before the re-check
+            with open(os.path.join(kw["isolation"].worktree_root, "src", "app.py"), "wb") as handle:
+                handle.write(b"edited meanwhile\n")
+        return outcome
+
+    monkeypatch.setattr(pp.wg, "gate_worker_change", gate)
+    result, _ = run(tmp_path)
+    assert result.verdict == "BLOCKED" and codes(result) == ["DIRTY_WORKTREE"] and result.post_materialize_verified is None
+    assert_nothing_applied(result, pp.build_run_record(result, MODEL_ONLY))
+
+
+def test_run_record_counts_no_applied_lines_after_a_failed_write_that_was_rolled_back(tmp_path, monkeypatch):
+    failing_writer(monkeypatch, then=lambda root, rel: None)
+    result, fake = run(tmp_path)
+    assert result.verdict == "BLOCKED" and codes(result) == ["MATERIALIZE_FAILED", "ROLLED_BACK"]
+    assert result.worktree_state == "UNCHANGED" and app_bytes(fake) == BASE_TEXT.encode()
+    assert_nothing_applied(result, pp.build_run_record(result, MODEL_ONLY))
+
+
+def test_run_record_counts_no_applied_lines_after_a_rollback_conflict(tmp_path, monkeypatch):
+    def tamper(root, rel):
+        with open(os.path.join(root, rel), "wb") as handle:
+            handle.write(b"somebody else wrote this\n")
+    failing_writer(monkeypatch, then=tamper)
+    result, _ = run(tmp_path)
+    assert result.verdict == "BLOCKED" and result.worktree_state == "UNKNOWN"
+    assert ("ROLLBACK_CONFLICT", shown("src/app.py")) in result.reasons
+    assert_nothing_applied(result, pp.build_run_record(result, MODEL_ONLY))
+
+
+def test_run_record_counts_no_applied_lines_when_the_journal_cannot_be_created(tmp_path, monkeypatch):
+    real_open = os.open
+
+    def deny_journal(path, flags, *a, **kw):
+        if str(path).endswith("vst-u5-2.journal"):
+            raise PermissionError("journal denied")
+        return real_open(path, flags, *a, **kw)
+
+    monkeypatch.setattr(pp.os, "open", deny_journal)
+    result, fake = run(tmp_path)
+    assert result.verdict == "BLOCKED" and codes(result) == ["JOURNAL_UNAVAILABLE"]
+    assert app_bytes(fake) == BASE_TEXT.encode()
+    assert_nothing_applied(result, pp.build_run_record(result, MODEL_ONLY))
+
+
+def test_run_record_of_an_accepted_run_still_attributes_the_applied_lines(tmp_path):
+    result, _ = run(tmp_path)
+    record = pp.build_run_record(result, {"src/b.py": [(4, 0)]})
+    # applied 1 + 1 = 2 proposal lines, model 4 lines, total 6
+    assert (record["proposal_lines"], record["model_lines"], record["total_lines"]) == (2, 4, 6)
+    assert record["proposal_fraction"] == 2 / 6 and record["model_fraction"] == 4 / 6
+    assert result.hunks_by_file == result.attempted_hunks_by_file == {"src/app.py": [(1, 1)]}
+
+
+def test_run_record_ignores_hunks_of_a_result_that_is_not_verified_accepted():
+    import dataclasses
+    forged = pp.ApplyResult("BLOCKED", (), "MATERIALIZE", "UNKNOWN", hunks_by_file={"a.py": [(5, 5)]},
+                            attempted_hunks_by_file={"a.py": [(5, 5)]})
+    assert pp.build_run_record(forged, {})["proposal_lines"] == 0
+    unverified = dataclasses.replace(forged, verdict="ACCEPTED", post_materialize_verified=None)
+    record = pp.build_run_record(unverified, {})
+    assert record["proposal_lines"] == 0 and record["attempted_proposal_lines"] == 10
 
 
 def test_run_record_of_a_refused_proposal_has_no_proposal_lines(tmp_path):
