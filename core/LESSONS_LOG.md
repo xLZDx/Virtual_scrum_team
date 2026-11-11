@@ -2359,3 +2359,7 @@ Python and test reviewers found an unresumable crash window, fixer rerun on resu
 ## 2026-11-11 SHORTCOMING U5-5 the shared secret pattern also matches ordinary identifiers
 
 The `tools/uc/secret_patterns.py` keyword rule (`secret`, `token`, `password` followed by 8 or more word characters) matches names such as `secret_patterns` or `test_token_validation`, so a package scanning paths or test ids would refuse its own change. Layer: author reading of the pattern, before any run. Rule: scan evidence text only, never identifiers validated by another check (paths) and never the diff, and say so in the limits; a precise pattern is a separate task.
+
+## 2026-11-11 FAILURE U5-5 first version could be READY with zero PASS tests
+
+Reviewers found: READY with no PASS test and no required list (a record could mark itself not required), story, receipt and run-record binding gaps, a secret scan that refused ordinary identifiers, unescaped Markdown from evidence text, an optional package hash in the currency check and a doubled mismatch reason. Layer: author design, caught by python and test reviewers before GPT-PM. Rule: a ready verdict needs positive evidence (at least one PASS and every required id), the requirement list comes from the caller and never from the evidence, every binding field is required and compared, scan free text and validate identifiers by shape, escape every untrusted string that reaches a document.
