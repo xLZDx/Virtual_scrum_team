@@ -4,12 +4,14 @@ The builder answers one question: may these facts be handed to the final reviewe
 ONE head? It reads no git, no file, no network and no clock and calls no model. Verdicts, fail closed:
 
 * READY    every piece of evidence names the package head, the diff bytes hash to the recorded digest and
-           parse to exactly the declared path set, the review result is CLEAN for this story, no test
+           parse to exactly the declared path set, the review result is CLEAN for this story and carries the
+           same changed-paths digest (`uc.contracts.changed_paths_sha256`) as the declared path set, no test
            FAILED, at least one test has PASS evidence, every required test id has a record and is PASS (or
            NOT_RUN / SKIPPED with an explicit `allow_not_run` reason), and no free-text evidence looks like a
            secret. The package and its sha256 are returned.
-* REFUSED  a definite policy violation (stale evidence, digest or path mismatch, review not CLEAN, failed
-           test, missing required test, no PASS evidence, unacknowledged NOT_RUN, secret). Every reason is
+* REFUSED  a definite policy violation (stale evidence, digest or path mismatch, review not CLEAN or bound to
+           other paths, failed test, missing required test, no PASS evidence, unacknowledged NOT_RUN, secret).
+           Every reason is
            listed; no package is returned. Reason details are fixed text plus validated item names only;
            unvalidated evidence text is never echoed.
 * BLOCKED  the input is malformed or over a size cap, so no decision can be made. No package.
@@ -37,6 +39,7 @@ import math
 import re
 from typing import Any, Mapping, Sequence
 
+from ..uc import contracts as uc_contracts
 from .contracts import ContractError, canonical_bytes
 from .patch_proposals import RUN_RECORD_SCHEMA
 from .receipt_builder import _refuse_secrets
@@ -69,6 +72,7 @@ REVIEW_NOT_CLEAN = "REVIEW_NOT_CLEAN"
 REVIEW_INCONSISTENT = "REVIEW_INCONSISTENT"
 REVIEW_REPLAYED = "REVIEW_REPLAYED"
 REVIEW_STORY_MISMATCH = "REVIEW_STORY_MISMATCH"
+REVIEW_PATHS_MISMATCH = "REVIEW_PATHS_MISMATCH"
 TEST_FAILED = "TEST_FAILED"
 NO_PASS_EVIDENCE = "NO_PASS_EVIDENCE"
 MISSING_REQUIRED_TEST = "MISSING_REQUIRED_TEST"
@@ -369,7 +373,8 @@ def _tests_section(raw: Any, allow: Any, required_raw: Any, head: str, refusals:
     return section, not_run
 
 
-def _review_section(raw: Any, story_id: str, head: str, replay_verified: bool, refusals: list) -> dict:
+def _review_section(raw: Any, story_id: str, head: str, replay_verified: bool, paths_digest: str,
+                    refusals: list) -> dict:
     if not isinstance(raw, Mapping):
         _bad(BAD_INPUT, "review_results must be an object (ReviewLoopResult.to_dict)")
     verdict = raw.get("verdict")
@@ -427,13 +432,21 @@ def _review_section(raw: Any, story_id: str, head: str, replay_verified: bool, r
         _stale(refusals, "review_results.iterations[-1].head", last["head"], head)
     if review_story != story_id:
         _add(refusals, REVIEW_STORY_MISMATCH, "the review result is not for this story (story id missing or different)")
+    reviewed_paths = raw.get("changed_paths_sha256")
+    if not isinstance(reviewed_paths, str) or not _SHA256.match(reviewed_paths):
+        reviewed_paths = None
+        _add(refusals, REVIEW_PATHS_MISMATCH, "review_results.changed_paths_sha256 is missing or malformed; the "
+             "review is not bound to a path set")
+    elif reviewed_paths != paths_digest:
+        _add(refusals, REVIEW_PATHS_MISMATCH, "review_results.changed_paths_sha256 differs from the digest of "
+             "changed_paths; the review did not cover exactly the packaged path set")
     if replayed and not replay_verified:
         _add(refusals, REVIEW_REPLAYED, "the review result was replayed without a verified store fact check; "
              "pass replay_store_verified=True only after the iterations were checked against the store")
     return {
         "verdict": verdict, "final_head": final_head, "iteration_count": len(iterations), "replayed": replayed,
         "replay_store_verified": bool(replay_verified), "declared_coverage": declared, "last_iteration": last,
-        "result_sha256": _digest_of(raw),
+        "changed_paths_sha256": reviewed_paths, "result_sha256": _digest_of(raw),
     }
 
 
@@ -675,9 +688,11 @@ def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, te
              "(no backtick, newline or control character)")
 
     refusals: list[tuple[str, str]] = []
+    paths_digest = uc_contracts.changed_paths_sha256(paths)  # the same function the review loop and reports use
     diff = _diff_section(diff_bytes, diff_sha256, paths, refusals)
+    diff["changed_paths_sha256"] = paths_digest
     tests, not_run = _tests_section(test_evidence, allow_not_run, required_test_ids, head, refusals)
-    review = _review_section(review_results, story_id, head, replay_store_verified, refusals)
+    review = _review_section(review_results, story_id, head, replay_store_verified, paths_digest, refusals)
     receipt_rows = _receipts_section(receipts, head, refusals)
     isolation = _isolation_section(isolation_proof, head, refusals)
     share = _share_section(patch_origin_share, head, diff_sha256, refusals)
@@ -755,6 +770,12 @@ def verify_package_current(package: Any, current_head: Any, current_diff_sha256:
             reasons.append((HEAD_CHANGED, f"the package is valid for {_safe(valid, 80)}, the current head is {current_head}"))
         if current_diff_sha256 != diff_sha:
             reasons.append((DIFF_CHANGED, f"the package diff is {diff_sha}, the current diff is {current_diff_sha256}"))
+        diff_paths = diff.get("changed_paths")
+        expected_paths = uc_contracts.changed_paths_sha256(list(diff_paths)) if isinstance(diff_paths, list) else None
+        for item, found in (("diff.changed_paths_sha256", diff.get("changed_paths_sha256")),
+                            ("review.changed_paths_sha256", review.get("changed_paths_sha256"))):
+            if expected_paths is None or found != expected_paths:
+                reasons.append((PACKAGE_INCONSISTENT, f"{item} is not the digest of diff.changed_paths"))
         if hashlib.sha256(canonical_bytes(package)).hexdigest() != package_sha256:
             reasons.append((PACKAGE_TAMPERED, "the package does not hash to the given package_sha256"))
     except Exception as exc:  # noqa: BLE001 - fail closed
@@ -806,6 +827,8 @@ def render_scope_note(package: Mapping[str, Any]) -> str:
                   f"{e(last.get('findings_count'))} finding(s))",
                   f"- Replayed from the store: {'yes' if review['replayed'] else 'no'}"
                   f"{' (store facts verified by the caller)' if review['replayed'] and review['replay_store_verified'] else ''}",
+                  f"- Reviewed paths sha256: `{e(review['changed_paths_sha256'])}` (equals the digest of the changed "
+                  f"paths above)",
                   f"- Result sha256: `{e(review['result_sha256'])}`", "", "## Test evidence", ""]
         counts = tests["counts"]
         lines.append(f"- Records: PASS {int(counts['PASS'])}, FAIL {int(counts['FAIL'])}, "

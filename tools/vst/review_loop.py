@@ -21,7 +21,8 @@ with nothing uncovered, and every DECLARED executor id reported COMPLETE (report
 the declaration), and the report's purpose is "receipt" and its changed-paths digest is the expected one. A
 partial or unsupported role, a missing declared executor, a report for another head, an advisory report, a
 report for other paths, a repeated (stale) report or an unverifiable report is never CLEAN. CLEAN is returned only after the CLEAN
-iteration row was recorded in `PipelineState`.
+iteration row was recorded in `PipelineState`. The result carries `changed_paths_sha256` (the digest the reports
+were checked against; a CLEAN result cannot be built without it) so a consumer can bind the review to a path set.
 
 BLOCKED reasons (stable codes): ITERATION_CAP, NO_PROGRESS, NO_FIXER, STOPPED, EPOCH_STALE, DEADLINE,
 SUBMIT_FAILED, SUBMIT_BLOCKED, BAD_REPORT, FIXER_FAILED, GATE_REFUSED, GATE_BLOCKED, GATE_NOT_ACCEPTED,
@@ -350,11 +351,19 @@ class ReviewLoopResult:
     fixer_calls: int
     gates: tuple[dict, ...]
     replayed: bool = False     # True when no new work happened: every iteration came from the store
+    # digest of the sorted reviewed paths every report carried (the loop input; for a replay the stored fact, which
+    # the replay cross-checks against the input). None only for a BLOCKED result that never got a valid input.
+    changed_paths_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if self.verdict not in (CLEAN, BLOCKED):
             raise ValueError("verdict must be CLEAN or BLOCKED")
+        if self.changed_paths_sha256 is not None and (
+                not isinstance(self.changed_paths_sha256, str) or not _SHA256.match(self.changed_paths_sha256)):
+            raise ValueError("changed_paths_sha256 must be None or 64 lowercase hex characters")
         if self.verdict == CLEAN:
+            if self.changed_paths_sha256 is None:
+                raise ValueError("CLEAN needs the changed_paths_sha256 the reports were checked against")
             last = self.iterations[-1] if self.iterations else None
             proven = (
                 last is not None and last.verdict == CLEAN and not self.reasons and not last.reasons
@@ -387,6 +396,7 @@ class ReviewLoopResult:
             "cap_effective": self.cap_effective, "cap_clamped": self.cap_clamped, "final_head": self.final_head,
             "submit_calls": self.submit_calls, "fixer_calls": self.fixer_calls,
             "gates": [dict(g) for g in self.gates], "replayed": self.replayed,
+            "changed_paths_sha256": self.changed_paths_sha256,
         }
 
 
@@ -567,6 +577,7 @@ class _Loop:
         self.first_index = 1
         self.t0 = 0.0
         self.last_now: float | None = None
+        self.facts_paths: str | None = None   # changed_paths_sha256 of the last stored or recorded review facts
 
     # ------------------------------------------------------------- inputs
     def _validate_inputs(self) -> None:
@@ -752,6 +763,7 @@ class _Loop:
                 if _core(given) != _core(summary):
                     _halt(RESUME_MISMATCH, f"resume summary {n} differs from the stored iteration")
             self.history.append(summary)
+            self.facts_paths = facts["changed_paths_sha256"]   # equal to the input: checked above
         if any(s.verdict == CLEAN for s in self.history[:-1]):
             _halt(RESUME_MISMATCH, "a CLEAN iteration is followed by another iteration")
         if len(self.history) > self.cap:
@@ -902,6 +914,7 @@ class _Loop:
             coverage=judged.covered, missing_coverage=judged.missing, verdict=judged.verdict,
             reasons=judged.reasons, truncated=truncated, replayed=False, started_at=started, finished_at=finished)
         self.history.append(summary)
+        self.facts_paths = facts["changed_paths_sha256"]
         if self.on_iteration is not None:
             try:
                 self.on_iteration(summary)
@@ -911,6 +924,14 @@ class _Loop:
     # ------------------------------------------------------------- result
     def result(self, verdict: str, items: Sequence[tuple[str, str]]) -> ReviewLoopResult:
         cap_requested = self.iteration_cap if type(self.iteration_cap) is int else None
+        given = self.changed_paths_sha256
+        given = given if isinstance(given, str) and _SHA256.match(given) else None
+        # with iterations the digest comes from their stored/recorded facts; it must equal the input
+        digest = self.facts_paths if self.history else given
+        if digest != given and self.history:
+            items = [*items, (INTERNAL_ERROR, "stored changed_paths_sha256 differs from the loop input")]
+            verdict = BLOCKED
+            digest = given
         return ReviewLoopResult(
             verdict=verdict, reasons=tuple(items), iterations=tuple(self.history),
             story_id=self.story_id if isinstance(self.story_id, str) else None,
@@ -919,7 +940,8 @@ class _Loop:
             cap_clamped=self.clamped, final_head=self.head, submit_calls=self.submit_calls,
             fixer_calls=self.fixer_calls, gates=tuple(self.gates),
             replayed=bool(self.history) and all(s.replayed for s in self.history)
-            and self.submit_calls == 0 and self.fixer_calls == 0)
+            and self.submit_calls == 0 and self.fixer_calls == 0,
+            changed_paths_sha256=digest)
 
 
 def run_review_loop(

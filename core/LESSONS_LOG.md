@@ -2415,3 +2415,7 @@ The synthetic story (U5-6) passed review, but the real run was blocked by the re
 ## 2026-11-11 SUCCESS sprint U5 delivered task by task with reviewers before GPT-PM
 
 Every task passed reviewers then GPT-PM; four of seven needed one GPT-PM or reviewer remediation round. Rule: keep the per-task review order and finish with one real run before closing a pipeline sprint.
+
+## 2026-11-11 SHORTCOMING the final package could not prove the review covered the packaged paths
+
+U5-4 stored the paths digest in step facts but left it out of `ReviewLoopResult.to_dict`, so U5-5 only had head equality; the gap was noted in a scope note and closed in U6-0. Rule: when a loop checks an input against its reports, expose that input in the result the next stage consumes, and make a missing value a refusal, not a skip.
