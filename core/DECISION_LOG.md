@@ -3277,3 +3277,7 @@ The change has no code or contract (a manifest, an evidence document and logs); 
 ## 2026-11-11 U6-5 merged origin/main to clear a PR conflict
 
 PR 19 conflicted with main (PR 18) only in the two append-only logs. Resolution: main entries kept first, the U6-5 entries kept after them; docs/qa/categories.json merged without conflict and equals main (this branch never changed it). No code touched.
+
+## 2026-11-11 U6-5 GPT-PM review requested by the operator
+
+The operator ordered one GPT-PM round for PR 19 although the change has no code; this supersedes the earlier entry that no round was needed. Scope note: docs/sdlc/u6/u6-5-gptpm-scope-note.md.

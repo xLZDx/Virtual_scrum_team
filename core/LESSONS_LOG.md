@@ -2527,3 +2527,7 @@ The U1-1 session was closed (45 hours idle, no process) and a new manifest verif
 ## 2026-11-11 SUCCESS U6-5 log conflict resolved by keeping both sides
 
 Two append-only logs conflicted after PR 18; keeping both sets of entries lost nothing, checked by a diff against origin/main showing additions only. Layer: not a defect. Rule: resolve append-only log conflicts by keeping both sides and diff against main.
+
+## 2026-11-11 SHORTCOMING U6-5 skipped GPT-PM on my own reading of the skill
+
+I decided no GPT-PM round was needed because the skill says documents are not reviewed; the operator wanted one. Layer: author. Rule: when the flow allows a skip, ask or follow the repository convention (every U6 task had a scope note and a round).
