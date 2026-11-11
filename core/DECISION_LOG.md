@@ -3265,3 +3265,27 @@ Registry regenerated after the R-27 tests; tests NOT_RUN.
 ## 2026-11-11 R-27 GPT-PM scope note
 
 Added docs/sdlc/u5/r27-gptpm-scope-note.md for the GPT-PM review of R-27. Tests NOT_RUN.
+
+## 2026-11-11 U6-5 baseline rebuilt on a closed session; savings report stays NOT_RUN
+
+Operator ordered a baseline rebuild on closed sessions. Session 557da842 is closed (about 45 hours idle, no process references it), so a new manifest u6-5-baseline-manifest.json pins its current bytes and verifies. No after-side session, paired-task file or price table exists, so no savings figure was produced and nothing was estimated. The transcript copy stays outside the public repository (D:/tmp/u6-5-baseline-transcripts); committing it needs an operator decision. Reviewer (code-reviewer) found one MAJOR wording defect, fixed.
+
+## 2026-11-11 U6-5 GPT-PM review not requested
+
+The change has no code or contract (a manifest, an evidence document and logs); gpt-pm-gate reviews code and contracts only and never documents, so no GPT-PM round was run. The operator asked for the work to be finished without questions. Merge is left to the operator.
+
+## 2026-11-11 U6-5 merged origin/main to clear a PR conflict
+
+PR 19 conflicted with main (PR 18) only in the two append-only logs. Resolution: main entries kept first, the U6-5 entries kept after them; docs/qa/categories.json merged without conflict and equals main (this branch never changed it). No code touched.
+
+## 2026-11-11 U6-5 GPT-PM review requested by the operator
+
+The operator ordered one GPT-PM round for PR 19 although the change has no code; this supersedes the earlier entry that no round was needed. Scope note: docs/sdlc/u6/u6-5-gptpm-scope-note.md.
+
+## 2026-11-11 U6-5 GPT-PM round 1 finding was a transmission mask
+
+Round 1 verdict MAJOR (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d): the manifest looked invalid because the bridge masks the word token in the diff. Verified the committed blob is valid JSON (61 files, no REDACTED string). Round 2 sent with that evidence; manifest unchanged.
+
+## 2026-11-11 U6-5 GPT-PM approval
+
+GPT-PM round 2: VERDICT APPROVE, head 6e05df0, base 6dc50d0 (reply 8ffdf344-6bfa-570d-8b73-581b081f42da, request f4e27ea4-9c68-4c9d-8bf7-a4e5707189cd; CLI verdict field APPROVE, no contradiction). Round 1 (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d) was MAJOR on a masked token_fields line; resolved by evidence. Limit stated by the reviewer: hashes and the Windows transcripts were not independently read.
