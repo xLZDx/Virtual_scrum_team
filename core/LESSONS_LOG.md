@@ -2503,3 +2503,7 @@ The scope note named what was and was not re-checked (19 VST yes, 11 AEVE no) an
 ## 2026-11-11 SHORTCOMING sprint goal said the runbook is the only new document but three tasks require documents
 
 The U6 goal text contradicted the acceptance of U6-2..U6-4; found at close. Layer: plan author. Rule: check the goal against the task acceptances when writing a plan.
+
+## 2026-11-11 SUCCESS R-27 attribute scan fixed by token rules instead of one regex
+
+The old single hazard regex refused every line-ending attribute and so blocked all AEVE patches in this repo (U5-7). Root cause: the scan treated "touches content" as a name list without separating descriptive attributes from code-running ones; the plan author deferred it as a design question. Layer: U5-7 real run found it. Rule: a trust-boundary scan names what it allows exactly and refuses the rest, and each refusal class gets one test.
