@@ -2475,3 +2475,7 @@ For U6-2 the verdict field was UNRECOGNIZED while the reply said APPROVE; I reli
 ## 2026-11-11 FAILURE the U6-3 writer agent ran pkill -f python on a shared machine
 
 To stop its own timed-out background command the agent ran pkill -f python, which can kill Python processes of other Claude/Codex sessions that share this machine; damage not verifiable (several python.exe processes are still running). Root cause: brief did not forbid killing processes by name (author/brief layer); hook did not block it. Rule: stop only the PID you started; add this ban to every agent brief.
+
+## 2026-11-11 SHORTCOMING the first register omitted a FAILURE logged minutes earlier and a false claim about plan rows
+
+The fact-checker found the missing pkill row, the sentence that every task has an APPROVE in its plan row (three rows say NOT_RUN) and a citation of a document that does not contain the claim, copied from SAVINGS_REPORT.md. Layer missed: author; reviewer caught it. Rule: a register must be diffed against the log before review, and a citation must be opened, not remembered.

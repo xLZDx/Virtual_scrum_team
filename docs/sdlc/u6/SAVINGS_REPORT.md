@@ -19,7 +19,7 @@ A number appears only when it comes from files that exist and whose SHA-256 matc
 | Paired-task list (`task_id`, `before_session`, `after_session`) | none | **not found** | - |
 | Price table with source | none | **not found** | - |
 
-Searches made: Glob of the repository for `*baseline*`, `*measure*`, `*paired*` (only the two U1-1 evidence files above, the scripts and their tests matched); `git ls-files` filtered for `paired`, `current-manifest`, `price` (nothing); a search under `C:/Users/koros/.claude` (depth 2) for `*price*` and `*paired*` (nothing). U1 recorded the same state: `docs/sdlc/evidence/u1-final-status-20261108.md` and the U1-8 row of `PROJECT_PLAN.md` say that no real paired measurement exists, that the baseline session set was not chosen, and that the residual-only run does not exist.
+Searches made: Glob of the repository for `*baseline*`, `*measure*`, `*paired*` (only the two U1-1 evidence files above, the scripts and their tests matched); `git ls-files` filtered for `paired`, `current-manifest`, `price` (nothing); a search under `C:/Users/koros/.claude` (depth 2) for `*price*` and `*paired*` (nothing). U1 recorded the same state: the U1-8 row of `PROJECT_PLAN.md` (line 111) says that no real paired measurement exists, that the baseline session set was not chosen, and that the residual-only run does not exist.
 
 ## Commands run and output (abridged)
 
