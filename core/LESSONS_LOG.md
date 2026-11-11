@@ -2555,3 +2555,11 @@ The builder needs a clean tests tree and a category entry first, so the sequence
 ## 2026-11-12 SUCCESS LINK-1 scope note written before the review round
 
 Following the convention from every U6 task, the note states what was not run and which tests are only hand-traced. Rule: put NOT_RUN and the simulated-versus-observed distinction in the scope note up front.
+
+## 2026-11-12 FAILURE LINK-1 two review sends failed before one reached GPT-PM
+
+First send used an unregistered scratch worktree path as --cwd (no project binding), second found PM Bridge mode off (Gate C). Both returned ok=false and cost a few minutes, no review round was consumed. Layer: author (did not check the binding or pm_bridge_health first). Rule: send reviews from the registered project folder and call pm_bridge_health before the first send.
+
+## 2026-11-12 SUCCESS LINK-1 approved in round 1
+
+Both MAJOR defects were removed before the round by the reviewer pass and one remediation batch; GPT-PM found only a stale sentence in the docs. Rule: run the language-level reviewer before GPT-PM so the paid round only sees residual issues.

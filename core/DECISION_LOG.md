@@ -3301,3 +3301,7 @@ The QA categories registry was regenerated with python -m tools.qa.build_registr
 ## 2026-11-12 LINK-1 scope note for GPT-PM
 
 Wrote docs/sdlc/LINK_1_GPTPM_SCOPE_NOTE.md (what changed, trust boundary, prior reviews, NOT_RUN items) before the GPT-PM round, following the U6 convention of one scope note per task.
+
+## 2026-11-12 LINK-1 GPT-PM approval
+
+GPT-PM round 1: VERDICT APPROVE (scoped, static review), head efb5828, base e2613e8 (reply 517da6b3-18f3-577c-a873-c6c1223244e7, request ba627c78-ceca-4b7b-8f3e-adda29a43262; CLI verdict field APPROVE, no contradiction). BLOCKER 0, MAJOR 0, one MINOR (docs said tests come later) fixed in the follow-up commit. Reviewer limits: runtime NOT_RUN, exact head not independently read in the repository. The approval does not allow enabling router or any AEVE integration.

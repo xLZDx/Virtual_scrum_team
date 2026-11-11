@@ -45,4 +45,4 @@ followed (acceptable because the CLI path is a repo constant).
 
 ## Verification
 
-No test was run for this change (NOT_RUN); the tests are to be added later by the test roles.
+Tests are in `tests/vst/test_link_mode.py`, written by the functional-test-reviewer from the acceptance criteria and hand-traced against the code. None was run (NOT_RUN, operator ban), and the Windows retry behaviour is simulated, not observed.
