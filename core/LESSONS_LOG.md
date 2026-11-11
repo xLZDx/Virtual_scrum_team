@@ -2403,3 +2403,7 @@ The first real run was BLOCKED: U5-2 refuses any `eol` or `text` attribute, AEVE
 ## 2026-11-11 SUCCESS U5-7 a block was recorded, not bypassed
 
 The driver stopped at the first non-ACCEPTED stage, marked later stages NOT_RUN and kept a read-only replica of the prescreen to show the isolation statuses. Rule: a measured refusal is the result; do not edit gitattributes, scans or inputs to turn it green.
+
+## 2026-11-11 SUCCESS registry regenerated for U5-7
+
+Registry regenerated after the U5-7 commit. Rule: regenerate after the last commit that changes tracked sources.

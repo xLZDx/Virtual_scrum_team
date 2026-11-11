@@ -3153,3 +3153,7 @@ GPT-PM APPROVE (0 BLOCKER, 0 MAJOR) for U5-6 at head 15f00a7 on the first round 
 ## 2026-11-11 U5-7 one real change run: BLOCKED by U5-2, reported as measured
 
 Decision: the U5-7 acceptance is met by an honest measured run, not by a green result. AEVE proposed a trailing-whitespace patch for tests/uc/test_token_baseline.py (g6.patch.v1, llm_calls 0, no model); apply_proposals returned BLOCKED for the full document (PROPOSAL_REDACTED, another file's diff holds a redaction marker) and BLOCKED for the document narrowed to the declared file (UNTRUSTED_GIT_CONFIG, the repository's `.gitattributes` sets `*.py text eol=lf`). Nothing was applied; the review loop and final package are NOT_RUN; the refusals were not worked around. One real AEVE review through router and adapter on the unchanged file ran (PARTIAL, exit 3). Isolation: Windows-local, no OS sandbox, no process containment; 3 properties VERIFIED, 3 CALLER_ASSERTED, 9 NOT_VERIFIED. Details and eight defects in docs/sdlc/u5/REAL_CHANGE.md; driver tools/vst/u5_real_change_driver.py. Tests NOT_RUN (operator ban). Not production-ready.
+
+## 2026-11-11 U5-7 QA registry regenerated
+
+Regenerated docs/qa/categories.json after the U5-7 commit (source commit changed). Tests NOT_RUN.
