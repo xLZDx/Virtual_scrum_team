@@ -3289,3 +3289,7 @@ Round 1 verdict MAJOR (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d): the manifest
 ## 2026-11-11 U6-5 GPT-PM approval
 
 GPT-PM round 2: VERDICT APPROVE, head 6e05df0, base 6dc50d0 (reply 8ffdf344-6bfa-570d-8b73-581b081f42da, request f4e27ea4-9c68-4c9d-8bf7-a4e5707189cd; CLI verdict field APPROVE, no contradiction). Round 1 (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d) was MAJOR on a masked token_fields line; resolved by evidence. Limit stated by the reviewer: hashes and the Windows transcripts were not independently read.
+
+## 2026-11-12 LINK-1 VST to AEVE link mode skeleton
+
+Decision (operator, AskUserQuestion): build the mode switch skeleton now. Modes: gates (current U1-U6 scheme, available) and router (AEVE does checks, VST only routes reports; declared but refused until AEVE S20-T07 and S20-T08 exist). Evidence: python-reviewer verification round found no BLOCKER or MAJOR; tests written and hand-traced, NOT_RUN. Nothing reads the mode yet.

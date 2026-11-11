@@ -66,6 +66,7 @@ MAIN_TEST_FILE_CATEGORIES = {
     "tests/vst/test_u5_e2e_story.py": "e2e",
     "tests/vst/test_u6_rollback_exercise.py": "functional",
     "tests/vst/test_u6_savings_report.py": "functional",
+    "tests/vst/test_link_mode.py": "functional",
     "tests/uc/test_measure.py": "functional",
     "tests/uc/test_role_table.py": "functional",
     "tests/uc/test_router.py": "functional",
