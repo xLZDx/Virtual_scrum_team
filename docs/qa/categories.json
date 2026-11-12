@@ -48,7 +48,7 @@
       "stderr": "docs/sdlc/evidence/qa/seeded-failure.stderr.txt"
     }
   },
-  "source_head": "d42ed8e586c0da607501335d835c00bd14f79a1b",
+  "source_head": "383baa5f3a57d4689dbeff2d70924d956e97822e",
   "source_inventory": [
     {
       "path": "tests/af/test_s2_review_source_fidelity.py",
@@ -179,6 +179,11 @@
       "path": "tests/vst/test_e5_slice.py",
       "source_commit": "abc0d5078d94358303aa022b84929bcf9caba022",
       "sha256": "91899d08348e22fa2b94936a4317737813e2a0130b215ab53ecbd7433dd023d5"
+    },
+    {
+      "path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "sha256": "0d49ec350d6bb6e4d36e4772e89f1a00a4f2ec2af2d498faf740adbd87417ec8"
     },
     {
       "path": "tests/vst/test_s2_4e_store_windows_preflight_contract.py",
@@ -19797,6 +19802,688 @@
       ]
     },
     {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_brief_permission_error_is_retried_then_new_content_lands",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_brief_permission_error_is_retried_then_new_content_lands",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_creates_the_file_when_it_does_not_exist",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_creates_the_file_when_it_does_not_exist",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_empty_data_is_written_as_an_empty_file",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_empty_data_is_written_as_an_empty_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_failure_while_writing_temp_file_leaves_no_temp",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_failure_while_writing_temp_file_leaves_no_temp",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_line_endings_stay_lf_and_bytes_are_not_translated",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_line_endings_stay_lf_and_bytes_are_not_translated",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_new_content_replaces_old_exactly_and_leaves_no_temp",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_new_content_replaces_old_exactly_and_leaves_no_temp",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_non_bytes_data_is_refused_and_leaves_no_temp",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_non_bytes_data_is_refused_and_leaves_no_temp",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_other_os_error_is_not_retried_and_leaves_no_temp",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_other_os_error_is_not_retried_and_leaves_no_temp",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_permanent_permission_error_keeps_old_file_and_leaves_no_temp",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_permanent_permission_error_keeps_old_file_and_leaves_no_temp",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::AtomicWriteTest::test_replace_with_retry_moves_the_source_after_brief_errors",
+      "selector": "tests/vst/test_link_mode.py::AtomicWriteTest::test_replace_with_retry_moves_the_source_after_brief_errors",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_get_exit_0_and_one_json_line",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_get_exit_0_and_one_json_line",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_get_failure_exit_1",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_get_failure_exit_1",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_get_honours_a_patched_default_path",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_get_honours_a_patched_default_path",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_output_is_ascii_even_for_non_ascii_detail",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_output_is_ascii_even_for_non_ascii_detail",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_gates_exit_0",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_gates_exit_0",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_honours_a_patched_default_path",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_honours_a_patched_default_path",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_on_broken_file_exit_1",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_on_broken_file_exit_1",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_and_file_unchanged",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_and_file_unchanged",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_even_when_the_file_is_broken",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_even_when_the_file_is_broken",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_set_unknown_mode_exit_1",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_set_unknown_mode_exit_1",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_unexpected_exception_exit_3_internal",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_unexpected_exception_exit_3_internal",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::CliTest::test_usage_errors_exit_2",
+      "selector": "tests/vst/test_link_mode.py::CliTest::test_usage_errors_exit_2",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_copy_of_real_catalog_loads_the_same",
+      "selector": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_copy_of_real_catalog_loads_the_same",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_load_default_catalog_mode_is_gates",
+      "selector": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_load_default_catalog_mode_is_gates",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_real_catalog_file_exists",
+      "selector": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_real_catalog_file_exists",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_default_catalog_is_gates_available",
+      "selector": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_default_catalog_is_gates_available",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_without_argument_uses_the_shipped_catalog",
+      "selector": "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_without_argument_uses_the_shipped_catalog",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_router_while_router_unavailable",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_router_while_router_unavailable",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_unknown",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_unknown",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_directory_instead_of_file",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_directory_instead_of_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_duplicate_json_key",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_duplicate_json_key",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_error_detail_does_not_echo_file_content",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_error_detail_does_not_echo_file_content",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_extra_top_level_key",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_extra_top_level_key",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_gates_unavailable_is_rejected",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_gates_unavailable_is_rejected",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_invalid_json_and_empty_file",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_invalid_json_and_empty_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_lone_surrogate_is_rejected",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_lone_surrogate_is_rejected",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_file",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_top_level_key",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_top_level_key",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_extra_mode",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_extra_mode",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_missing_mode",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_missing_mode",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_wrong_case_name",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_wrong_case_name",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_nan_and_infinity",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_nan_and_infinity",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_non_utf8_bytes",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_non_utf8_bytes",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_marked_available_is_rejected",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_marked_available_is_rejected",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_with_altered_pinned_values_is_rejected",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_with_altered_pinned_values_is_rejected",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_top_level_not_an_object",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_top_level_not_an_object",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_utf8_bom_is_rejected_with_the_bom_detail",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_utf8_bom_is_rejected_with_the_bom_detail",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_valid_catalog_still_loads_with_pinned_router",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_valid_catalog_still_loads_with_pinned_router",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_schema",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_schema",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_types_and_entry_shapes",
+      "selector": "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_types_and_entry_shapes",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeNoOpTest::test_set_gates_when_gates_does_not_rewrite",
+      "selector": "tests/vst/test_link_mode.py::SetModeNoOpTest::test_set_gates_when_gates_does_not_rewrite",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_is_unavailable_and_file_is_unchanged",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_is_unavailable_and_file_is_unchanged",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_does_not_depend_on_the_file",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_does_not_depend_on_the_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_on_byte_exact_copy_of_real_catalog",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_on_byte_exact_copy_of_real_catalog",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_invalid_file_is_refused_and_untouched",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_invalid_file_is_refused_and_untouched",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_missing_file_is_unreadable",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_missing_file_is_unreadable",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_unknown_mode_is_refused_and_file_is_unchanged",
+      "selector": "tests/vst/test_link_mode.py::SetModeRefusalTest::test_unknown_mode_is_refused_and_file_is_unchanged",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_brief_replace_failure_still_ends_with_the_new_content",
+      "selector": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_brief_replace_failure_still_ends_with_the_new_content",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_os_error_from_the_writer_is_write_failed",
+      "selector": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_os_error_from_the_writer_is_write_failed",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_permanent_replace_failure_is_write_failed_and_keeps_old_file",
+      "selector": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_permanent_replace_failure_is_write_failed_and_keeps_old_file",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_switch_writes_the_new_document",
+      "selector": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_switch_writes_the_new_document",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
+      "test_id": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_value_error_from_the_writer_is_write_failed",
+      "selector": "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_value_error_from_the_writer_is_write_failed",
+      "source_path": "tests/vst/test_link_mode.py",
+      "source_commit": "383baa5f3a57d4689dbeff2d70924d956e97822e",
+      "primary_category": "functional",
+      "runtime_profiles": [
+        "windows-cpython-3.14.3",
+        "wsl-ubuntu-24.04-cpython-3.12.3"
+      ]
+    },
+    {
       "test_id": "tests/vst/test_s2_4e_store_windows_preflight_contract.py::StoreWindowsPreflightContractTests::test_ordinary_mode_accepts_signed_legacy_intent_and_derives_grant_basis_without_probe",
       "selector": "tests/vst/test_s2_4e_store_windows_preflight_contract.py::StoreWindowsPreflightContractTests::test_ordinary_mode_accepts_signed_legacy_intent_and_derives_grant_basis_without_probe",
       "source_path": "tests/vst/test_s2_4e_store_windows_preflight_contract.py",
@@ -33311,6 +33998,68 @@
         "tests/uc/test_u4_project_roles.py::test_validator_rejects_missing_extra_and_stale_project_entries",
         "tests/uc/test_u4_project_roles.py::test_validator_requires_exactly_the_builder_shape",
         "tests/uc/test_u4_project_roles.py::test_validator_returns_problems_and_never_raises_on_malformed_tables",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_brief_permission_error_is_retried_then_new_content_lands",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_creates_the_file_when_it_does_not_exist",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_empty_data_is_written_as_an_empty_file",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_failure_while_writing_temp_file_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_line_endings_stay_lf_and_bytes_are_not_translated",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_new_content_replaces_old_exactly_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_non_bytes_data_is_refused_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_other_os_error_is_not_retried_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_permanent_permission_error_keeps_old_file_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_replace_with_retry_moves_the_source_after_brief_errors",
+        "tests/vst/test_link_mode.py::CliTest::test_get_exit_0_and_one_json_line",
+        "tests/vst/test_link_mode.py::CliTest::test_get_failure_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_get_honours_a_patched_default_path",
+        "tests/vst/test_link_mode.py::CliTest::test_output_is_ascii_even_for_non_ascii_detail",
+        "tests/vst/test_link_mode.py::CliTest::test_set_gates_exit_0",
+        "tests/vst/test_link_mode.py::CliTest::test_set_honours_a_patched_default_path",
+        "tests/vst/test_link_mode.py::CliTest::test_set_on_broken_file_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_and_file_unchanged",
+        "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_even_when_the_file_is_broken",
+        "tests/vst/test_link_mode.py::CliTest::test_set_unknown_mode_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_unexpected_exception_exit_3_internal",
+        "tests/vst/test_link_mode.py::CliTest::test_usage_errors_exit_2",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_copy_of_real_catalog_loads_the_same",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_load_default_catalog_mode_is_gates",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_real_catalog_file_exists",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_default_catalog_is_gates_available",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_without_argument_uses_the_shipped_catalog",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_router_while_router_unavailable",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_unknown",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_directory_instead_of_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_duplicate_json_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_error_detail_does_not_echo_file_content",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_extra_top_level_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_gates_unavailable_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_invalid_json_and_empty_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_lone_surrogate_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_top_level_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_extra_mode",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_missing_mode",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_wrong_case_name",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_nan_and_infinity",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_non_utf8_bytes",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_marked_available_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_with_altered_pinned_values_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_top_level_not_an_object",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_utf8_bom_is_rejected_with_the_bom_detail",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_valid_catalog_still_loads_with_pinned_router",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_schema",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_types_and_entry_shapes",
+        "tests/vst/test_link_mode.py::SetModeNoOpTest::test_set_gates_when_gates_does_not_rewrite",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_is_unavailable_and_file_is_unchanged",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_does_not_depend_on_the_file",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_on_byte_exact_copy_of_real_catalog",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_invalid_file_is_refused_and_untouched",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_missing_file_is_unreadable",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_unknown_mode_is_refused_and_file_is_unchanged",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_brief_replace_failure_still_ends_with_the_new_content",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_os_error_from_the_writer_is_write_failed",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_permanent_replace_failure_is_write_failed_and_keeps_old_file",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_switch_writes_the_new_document",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_value_error_from_the_writer_is_write_failed",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_reads_verified_handoff_and_live_basis_without_store_mutation",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_refuses_changed_or_missing_trusted_policy_provider",
         "tests/vst/test_s2_assignment_basis.py::test_assignment_basis_refuses_expired_root_policy",
@@ -37132,6 +37881,68 @@
         "tests/vst/test_e5_slice.py::SliceScenarioTests::test_worker_death_before_receipt_marks_worker_lost_and_keeps_attempt",
         "tests/vst/test_e5_slice.py::SliceScenarioTests::test_worker_lost_before_first_receipt_then_new_head_approves_with_finding",
         "tests/vst/test_e5_slice.py::SliceScenarioTests::test_zombie_late_write_is_fenced_and_leaves_no_trace",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_brief_permission_error_is_retried_then_new_content_lands",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_creates_the_file_when_it_does_not_exist",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_empty_data_is_written_as_an_empty_file",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_failure_while_writing_temp_file_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_line_endings_stay_lf_and_bytes_are_not_translated",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_new_content_replaces_old_exactly_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_non_bytes_data_is_refused_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_other_os_error_is_not_retried_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_permanent_permission_error_keeps_old_file_and_leaves_no_temp",
+        "tests/vst/test_link_mode.py::AtomicWriteTest::test_replace_with_retry_moves_the_source_after_brief_errors",
+        "tests/vst/test_link_mode.py::CliTest::test_get_exit_0_and_one_json_line",
+        "tests/vst/test_link_mode.py::CliTest::test_get_failure_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_get_honours_a_patched_default_path",
+        "tests/vst/test_link_mode.py::CliTest::test_output_is_ascii_even_for_non_ascii_detail",
+        "tests/vst/test_link_mode.py::CliTest::test_set_gates_exit_0",
+        "tests/vst/test_link_mode.py::CliTest::test_set_honours_a_patched_default_path",
+        "tests/vst/test_link_mode.py::CliTest::test_set_on_broken_file_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_and_file_unchanged",
+        "tests/vst/test_link_mode.py::CliTest::test_set_router_exit_1_even_when_the_file_is_broken",
+        "tests/vst/test_link_mode.py::CliTest::test_set_unknown_mode_exit_1",
+        "tests/vst/test_link_mode.py::CliTest::test_unexpected_exception_exit_3_internal",
+        "tests/vst/test_link_mode.py::CliTest::test_usage_errors_exit_2",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_copy_of_real_catalog_loads_the_same",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_load_default_catalog_mode_is_gates",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_real_catalog_file_exists",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_default_catalog_is_gates_available",
+        "tests/vst/test_link_mode.py::DefaultCatalogTest::test_resolve_without_argument_uses_the_shipped_catalog",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_router_while_router_unavailable",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_current_mode_unknown",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_directory_instead_of_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_duplicate_json_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_error_detail_does_not_echo_file_content",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_extra_top_level_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_gates_unavailable_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_invalid_json_and_empty_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_lone_surrogate_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_file",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_missing_top_level_key",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_extra_mode",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_missing_mode",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_modes_table_with_wrong_case_name",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_nan_and_infinity",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_non_utf8_bytes",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_marked_available_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_router_with_altered_pinned_values_is_rejected",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_top_level_not_an_object",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_utf8_bom_is_rejected_with_the_bom_detail",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_valid_catalog_still_loads_with_pinned_router",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_schema",
+        "tests/vst/test_link_mode.py::LoadRejectsTest::test_wrong_types_and_entry_shapes",
+        "tests/vst/test_link_mode.py::SetModeNoOpTest::test_set_gates_when_gates_does_not_rewrite",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_is_unavailable_and_file_is_unchanged",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_does_not_depend_on_the_file",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_router_refusal_on_byte_exact_copy_of_real_catalog",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_invalid_file_is_refused_and_untouched",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_set_gates_on_missing_file_is_unreadable",
+        "tests/vst/test_link_mode.py::SetModeRefusalTest::test_unknown_mode_is_refused_and_file_is_unchanged",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_brief_replace_failure_still_ends_with_the_new_content",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_os_error_from_the_writer_is_write_failed",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_permanent_replace_failure_is_write_failed_and_keeps_old_file",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_switch_writes_the_new_document",
+        "tests/vst/test_link_mode.py::WriteFailedMappingTest::test_value_error_from_the_writer_is_write_failed",
         "tests/vst/test_s2_4e_store_windows_preflight_contract.py::StoreWindowsPreflightContractTests::test_ordinary_mode_accepts_signed_legacy_intent_and_derives_grant_basis_without_probe",
         "tests/vst/test_s2_4e_store_windows_preflight_contract.py::StoreWindowsPreflightContractTests::test_ordinary_mode_claims_without_any_preflight_record",
         "tests/vst/test_s2_4e_store_windows_preflight_contract.py::StoreWindowsPreflightContractTests::test_sandbox_mode_still_fails_closed_without_preflight",

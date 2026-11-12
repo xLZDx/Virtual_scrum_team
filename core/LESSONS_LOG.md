@@ -2539,3 +2539,27 @@ The review channel redacts strings that look like secrets, so a key named token_
 ## 2026-11-11 SUCCESS U6-5 approved in round 2 after evidence for a masked line
 
 The round 1 MAJOR was cleared by parsing the committed blob and quoting the result in the scope note, with no manifest change. Layer: reviewer saw a transmission artifact. Rule: answer a doubted-file finding with a parse of the committed blob, not a rebuild.
+
+## 2026-11-12 SHORTCOMING LINK-1 router availability was read from data, not pinned in code
+
+The first link_mode.py trusted the available flag in catalog/link_mode.json, so a hand edit could enable the unfinished router mode; the python reviewer found it and the test author had built fixtures on the same assumption. Layer: author and tests, caught by the reviewer. Rule: a capability that must stay off is a constant in code that the data file cannot flip.
+
+## 2026-11-12 SUCCESS LINK-1 one remediation batch covered code, tests and docs
+
+Two reviewers named the same weak point (router flag) plus lone-surrogate and CLI exit-code gaps; one batch to the implementer and one to the test author closed them, and a second read found no BLOCKER or MAJOR. Nothing was run (operator ban), so all results are by reading and hand-tracing. Rule: send reviewer findings to the code author first, then to the test author, in that order.
+
+## 2026-11-12 SUCCESS LINK-1 registry regenerated after a clean commit of the test file
+
+The builder needs a clean tests tree and a category entry first, so the sequence entry commit, then regenerate, then separate commit worked on the first try. The large diff was checked line by line (one deletion). Rule: inspect a generated diff for deletions before committing it.
+
+## 2026-11-12 SUCCESS LINK-1 scope note written before the review round
+
+Following the convention from every U6 task, the note states what was not run and which tests are only hand-traced. Rule: put NOT_RUN and the simulated-versus-observed distinction in the scope note up front.
+
+## 2026-11-12 FAILURE LINK-1 two review sends failed before one reached GPT-PM
+
+First send used an unregistered scratch worktree path as --cwd (no project binding), second found PM Bridge mode off (Gate C). Both returned ok=false and cost a few minutes, no review round was consumed. Layer: author (did not check the binding or pm_bridge_health first). Rule: send reviews from the registered project folder and call pm_bridge_health before the first send.
+
+## 2026-11-12 SUCCESS LINK-1 approved in round 1
+
+Both MAJOR defects were removed before the round by the reviewer pass and one remediation batch; GPT-PM found only a stale sentence in the docs. Rule: run the language-level reviewer before GPT-PM so the paid round only sees residual issues.

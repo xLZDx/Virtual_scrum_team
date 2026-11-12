@@ -3289,3 +3289,19 @@ Round 1 verdict MAJOR (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d): the manifest
 ## 2026-11-11 U6-5 GPT-PM approval
 
 GPT-PM round 2: VERDICT APPROVE, head 6e05df0, base 6dc50d0 (reply 8ffdf344-6bfa-570d-8b73-581b081f42da, request f4e27ea4-9c68-4c9d-8bf7-a4e5707189cd; CLI verdict field APPROVE, no contradiction). Round 1 (reply 1d2d4951-b0ac-50f3-ba0f-ec029d3b883d) was MAJOR on a masked token_fields line; resolved by evidence. Limit stated by the reviewer: hashes and the Windows transcripts were not independently read.
+
+## 2026-11-12 LINK-1 VST to AEVE link mode skeleton
+
+Decision (operator, AskUserQuestion): build the mode switch skeleton now. Modes: gates (current U1-U6 scheme, available) and router (AEVE does checks, VST only routes reports; declared but refused until AEVE S20-T07 and S20-T08 exist). Evidence: python-reviewer verification round found no BLOCKER or MAJOR; tests written and hand-traced, NOT_RUN. Nothing reads the mode yet.
+
+## 2026-11-12 LINK-1 registry regeneration
+
+The QA categories registry was regenerated with python -m tools.qa.build_registry --write after the test file and its category entry were committed (the builder refuses a dirty tree). Diff checked: one source_head replacement plus new entries for tests/vst/test_link_mode.py.
+
+## 2026-11-12 LINK-1 scope note for GPT-PM
+
+Wrote docs/sdlc/LINK_1_GPTPM_SCOPE_NOTE.md (what changed, trust boundary, prior reviews, NOT_RUN items) before the GPT-PM round, following the U6 convention of one scope note per task.
+
+## 2026-11-12 LINK-1 GPT-PM approval
+
+GPT-PM round 1: VERDICT APPROVE (scoped, static review), head efb5828, base e2613e8 (reply 517da6b3-18f3-577c-a873-c6c1223244e7, request ba627c78-ceca-4b7b-8f3e-adda29a43262; CLI verdict field APPROVE, no contradiction). BLOCKER 0, MAJOR 0, one MINOR (docs said tests come later) fixed in the follow-up commit. Reviewer limits: runtime NOT_RUN, exact head not independently read in the repository. The approval does not allow enabling router or any AEVE integration.

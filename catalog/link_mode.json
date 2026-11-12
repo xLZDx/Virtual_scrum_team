@@ -1,0 +1,19 @@
+{
+  "schema": "vst.link_mode.v1",
+  "mode": "gates",
+  "modes": {
+    "gates": {
+      "available": true,
+      "description": "VST owns the gates, the receipts and the review loop (the U1-U6 scheme)."
+    },
+    "router": {
+      "available": false,
+      "blocked_reason": "ROUTER_REQUIRES_AEVE_TASK_PACKET_AND_HANDOFF_VERIFIER",
+      "requires": [
+        "AEVE S20-T07",
+        "AEVE S20-T08"
+      ],
+      "description": "AEVE performs the checks and VST only routes AEVE reports to sessions and reviewers. Declared only: it cannot be selected until the AEVE task packet and the AEVE handoff verifier exist."
+    }
+  }
+}
