@@ -2575,3 +2575,7 @@ Rebuilding the role table at the new AEVE head moved four skills from OUT_OF_SCO
 ## 2026-11-14 SUCCESS LINK2-T2 guard checks reject Python bool-as-int
 
 In Python False == 0, so a guard written as llm_calls == 0 would accept false from a foreign producer. The validator tests the exact type for the integer guard and uses is-False for the boolean guards. Rule: when a contract says integer 0 or boolean false, compare by identity or exact type, never by equality.
+
+## 2026-11-14 SUCCESS LINK2-T3A extraction kept the old caller first
+
+The generic runner was cut out of run_review by moving the body unchanged and adding only the argument hook, the exit table and the tree_dead flag, so the existing adapter tests keep their argv, order of checks and reason codes. Rule: extract by moving code and parametrising, then change behaviour in a separate step.
