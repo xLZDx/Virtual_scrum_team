@@ -162,12 +162,16 @@ part is a defect. Rollback: revert T6; a half-reverted state fails closed in `lo
 
 ### D4. Concurrency, claim and resume
 - Work directory: `<state_root>/router/<task_id>/<request_sha256[:16]>-<result_sha256[:16] or "pending">/`.
-- Exclusive claim before any AEVE call: `claim.lock` created with `os.open(O_CREAT|O_EXCL)`, content `{owner, created_at}`
-  (owner = random token, not a pid; `os.kill(pid,0)` is not a liveness probe on Windows). A claim older than 600 s (chosen
-  default) is stale: the taker renames it to a unique name (atomic) and then creates its own claim; the takeover is logged.
-  Lock wait is bounded (60 s, poll 0.5 s); expiry is `ROUTER_LOCK_TIMEOUT`.
-- Cap on concurrent AEVE subprocesses: 2 (chosen default), counted by slot lock files taken with the same O_EXCL rule;
-  waiting is bounded and ends in `ROUTER_LOCK_TIMEOUT`.
+- Exclusive claim before any AEVE call: an OS lock on byte 0 of `claim.lock` (`msvcrt.locking(LK_NBLCK)` on Windows,
+  `fcntl.flock(LOCK_EX|LOCK_NB)` elsewhere), held through the open descriptor for the whole run. The OS drops the lock
+  when the process ends, so a crash releases it; there is no age-based takeover, no rename and no restore, and no
+  heartbeat is needed however long a run takes (worst case about 850 s). Nobody deletes a lock file while a run may hold
+  it. An open that raises `PermissionError` (Windows delete-pending path) counts as "not acquired, poll again".
+  Lock wait is a bounded poll (60 s, 0.5 s); expiry is `ROUTER_LOCK_TIMEOUT`, meaning "another run holds this story
+  longer than this call waits": the caller retries later and then adopts the recorded state. `release_work_dir` refuses
+  with `ROUTER_LOCK_TIMEOUT` while the claim is held; `sweep` skips a directory whose claim is held.
+- Cap on concurrent AEVE subprocesses: 2 (chosen default), counted by slot lock files locked by the same rule (held
+  for the AEVE call only); waiting is bounded and ends in `ROUTER_LOCK_TIMEOUT`.
 - States: NEW, AWAITING_RESULT (packet recorded, result absent: a normal wait, no AEVE call, not an error), RESULT_COPIED,
   DONE (verdict recorded). A crash is recognised only by a stale claim plus a state older than the recorded step.
 - Adoption on resume: a recorded verdict is adopted only if the row, report digest, packet digest, result digest AND pin head
@@ -188,7 +192,7 @@ part is a defect. Rollback: revert T6; a half-reverted state fails closed in `lo
 - Retention: a work directory is deleted after the story's final package is built; BLOCKED directories after 14 days;
   deletion touches only directories under `<state_root>/router/`.
 - Observability: one JSON line per step in `router.log.jsonl` with `task_id`, `request_sha256`, `step`, `outcome`,
-  `retry_count`, `resume` (`adopted`/`rerun`/`none`), `claim_takeover`. No packet, result or env content, no secrets.
+  `retry_count`, `resume` (`adopted`/`rerun`/`none`). No packet, result or env content, no secrets.
 
 ### D6. Failure modes (reason codes)
 
@@ -213,7 +217,8 @@ part is a defect. Rollback: revert T6; a half-reverted state fails closed in `lo
 - Router availability from the JSON file: already rejected in `link_mode.py`.
 - Silent fallback to `gates` when AEVE fails: changes who owns the gates; explicit `set gates` only.
 - Verify the host's original result path: the file can change between check and use; the VST-owned copy is hashed instead.
-- Pid-based lock liveness: unreliable on Windows; owner token plus age is used.
+- Pid-based lock liveness: unreliable on Windows. Owner token plus age with rename takeover was tried and rejected
+  (three contenders could hold the lock, no heartbeat); an OS lock held for the process lifetime is used.
 - Change `run_review_loop` to take the router outcome: widens a settled module; a precondition in the driver is enough.
 - Recompute AEVE's `request_sha256` in VST: depends on an unverified AEVE normalisation.
 
@@ -251,12 +256,14 @@ and no "about N lines".
 CLEAN; the full matrix {VERIFIED, REJECTED, UNKNOWN, INVALID} x {CLEAN, FINDINGS, PARTIAL, BLOCKED} is asserted, every other cell is
 BLOCKED or not reached. AC-20: UNKNOWN never produces READY in any cell. AC-21: `router_required` True with no row gives
 `ROUTER_NOT_VERIFIED`; `router_required` False leaves the package byte-identical to today. AC-22: mode `gates` makes no
-`packet` or `verify-handoff` call and skips `stage_router`. AC-23: mode `router` with a non-HANDOFF_ASSISTED role skips
-`stage_router`.
+`packet` or `verify-handoff` call and skips `stage_router`. AC-23: mode `router` with a missing or non-HANDOFF_ASSISTED role
+BLOCKS in `stage_router` (blocked tuple, no review, no package, driver exit code non-zero), never falls back to gates.
+AC-37: a supplied router row whose outcome is not ROUTED_VERIFIED, or whose `task_id` differs from `story_id`, refuses the
+package with `ROUTER_NOT_VERIFIED` whatever `router_required` says.
 
 **T5 state and concurrency.** AC-24: two concurrent runs of one task call AEVE once per command and return the same row.
-AC-25: stale claim (older than 600 s) is taken over and logged; a fresh claim makes the second caller wait, then
-`ROUTER_LOCK_TIMEOUT`. AC-26: crash after `packet` and before `verify` resumes in AWAITING_RESULT or verifies once, never re-runs
+AC-25: a claim held by a live run makes the second caller wait, then `ROUTER_LOCK_TIMEOUT`; a claim whose holder ended
+(lock released by the OS) is acquired at once, with no age rule. AC-26: crash after `packet` and before `verify` resumes in AWAITING_RESULT or verifies once, never re-runs
 `packet` for a recorded step. AC-27: result file altered after copy gives `ROUTER_RESULT_DIGEST_MISMATCH`; the host's original file
 is never passed to AEVE. AC-28: a row whose pin head, or any digest, differs is re-verified and logged `rerun`; a matching row is
 logged `adopted`. AC-29: torn result gives `ROUTER_BAD_OUTPUT`. AC-30: third concurrent AEVE call waits on the 2-slot cap.
@@ -284,5 +291,10 @@ No suite, lint, typecheck or CI run.
 - Whether AEVE normalises the request before hashing: not verified; VST does not depend on it (owner T2 re-reads if needed).
 - How the host session receives the packet (path in prompt or MCP): out of scope; VST writes the packet file and reads the
   result file.
-- Chosen defaults (120 s, 600 s claim age, 60 s lock wait, 2 slots, 1 MiB caps, 14 days): owner T3b/T5 may adjust with a
+- Chosen defaults (120 s, 60 s lock wait, 2 slots, 1 MiB caps, 14 days): owner T3b/T5 may adjust with a
   recorded reason; they are configuration, not contracts.
+
+## 8. Backlog (not in the LINK2-FIX2 batch)
+- Descendants of the AEVE process tree are not confirmed dead: `tree_dead` checks only the root; a Windows Job Object is needed.
+- `router.log.jsonl` has no rotation and no append lock.
+- A hand-edited torn `state.json` is treated as NEW and loses the recorded digests.

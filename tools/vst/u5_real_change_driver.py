@@ -207,8 +207,9 @@ def stage_router(args, apply_result, ev: dict):
         ev["router"] = {"skipped": "link mode is not router", "mode": mode}
         return False, None
     if args.router_role not in router_request.ROUTER_ROLES:
-        ev["router"] = {"skipped": "the story role is not a HANDOFF_ASSISTED role", "role": args.router_role}
-        return False, None
+        ev["router"] = {"blocked": "ROUTER_ROLE_NOT_HANDOFF_ASSISTED", "role": args.router_role,
+                        "detail": "router mode needs --router-role to be one of the HANDOFF_ASSISTED roles; no fallback to gates"}
+        return True, None
     try:
         request = router_request.build_request(
             role=args.router_role, task_id=STORY, title=args.router_title or STORY,
@@ -219,12 +220,16 @@ def stage_router(args, apply_result, ev: dict):
     except router_request.RouterError as exc:
         ev["router"] = {"blocked": exc.reason, "detail": exc.detail}
         return True, None
+    except OSError as exc:
+        ev["router"] = {"blocked": "ROUTER_STATE_DIR_UNUSABLE", "detail": type(exc).__name__}
+        return True, None
     ev["router"] = {"state": row.state, "outcome": row.outcome, "status": row.status, "resume": row.resume,
                     "reason": row.reason, "packet_path": row.packet_path, "row": row.to_report()}
     return True, row
 
 
-def stage_package(args, apply_result, loop, base_head: str, ev: dict, router_row=None):
+def stage_package(args, apply_result, loop, base_head: str, ev: dict, router_row=None) -> bool:
+    """Stage 4. False when the router row could not be turned into package input (recorded as BLOCKED)."""
     from tools.vst import final_package as fp
     from tools.vst import patch_proposals
 
@@ -235,7 +240,12 @@ def stage_package(args, apply_result, loop, base_head: str, ev: dict, router_row
     router_args = {}
     if router_row is not None:
         from tools.vst import router_mode
-        router_args = {"router_required": True, "router_report": router_mode.report_for_package(router_row)}
+        try:
+            router_args = {"router_required": True, "router_report": router_mode.report_for_package(router_row)}
+        except (router_mode.RouterError, OSError) as exc:
+            reason = getattr(exc, "reason", "ROUTER_STATE_DIR_UNUSABLE")
+            ev["final_package"] = {"verdict": "BLOCKED", "reasons": [[reason, type(exc).__name__]]}
+            return False
     t0 = time.perf_counter()
     pkg = fp.build_final_package(
         story_id=STORY, base_head=base_head, head=apply_result.candidate_head, diff_bytes=apply_result.diff_bytes,
@@ -252,8 +262,12 @@ def stage_package(args, apply_result, loop, base_head: str, ev: dict, router_row
                            "package_sha256": pkg.package_sha256, "package": pkg.package}
     if router_row is not None and pkg.verdict == fp.READY:  # design D5: the work directory goes after the package is built
         from tools.vst import router_mode
-        ev["final_package"]["router_work_dirs_removed"] = router_mode.release_work_dir(
-            args.router_state_root or args.state_dir, router_row.task_id, router_row.request_sha256)
+        try:
+            ev["final_package"]["router_work_dirs_removed"] = router_mode.release_work_dir(
+                args.router_state_root or args.state_dir, router_row.task_id, router_row.request_sha256)
+        except (router_mode.RouterError, OSError) as exc:
+            ev["final_package"]["router_work_dirs_removed"] = "BLOCKED: " + getattr(exc, "reason", type(exc).__name__)
+    return True
 
 
 def stage_prescreen_replica(args, doc: dict, ev: dict, base_head: str, proposal_head: str) -> None:
@@ -317,6 +331,7 @@ def main() -> int:
     ev: dict = {"tests": "NOT_RUN (operator ban on running tests)", "target_file": args.target_file}
     ev_path = out / "evidence.json"
     t_all = time.perf_counter()
+    exit_code = 0
     try:
         base_head = git(args.worktree, "rev-parse", "HEAD")
         ev["base_head"] = base_head
@@ -337,12 +352,14 @@ def main() -> int:
                 reason = "NOT_RUN: the router outcome is not ROUTED_VERIFIED (" + str(ev["router"]) [:200] + ")"
                 ev["review_loop"] = reason
                 ev["final_package"] = reason
+                exit_code = 2  # router mode is active and the story is not verified: the run is not a success
             else:
                 loop = stage_review(args, result, base_head, ev)
                 if router_row is not None:
                     from tools.vst import router_mode
                     ev["router"]["gate"] = router_mode.route_gate(router_row.outcome, loop.verdict)
-                stage_package(args, result, loop, base_head, ev, router_row)
+                if not stage_package(args, result, loop, base_head, ev, router_row):
+                    exit_code = 2
         else:
             stage_prescreen_replica(args, narrow, ev, base_head, proposal_head)
             stage_review_path_probe(args, base_head, ev)
@@ -352,7 +369,7 @@ def main() -> int:
         ev["total_seconds"] = round(time.perf_counter() - t_all, 3)
         write_json(ev_path, ev)
     print("evidence written to", ev_path)
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":

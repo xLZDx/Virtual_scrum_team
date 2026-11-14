@@ -9,17 +9,17 @@
   `request.json` and `packet.json`; the host result is copied to `<task_id>/<request_sha256[:16]>-<result_sha256[:16]>/
   result.json` and the AEVE report is written beside the copy as `report.json`. `request_sha256` here is the SHA-256 of
   the canonical request bytes computed by VST; the opaque value AEVE puts in the packet is stored as `aeve_request_sha256`.
-- Claim: `claim.lock` is created with O_CREAT|O_EXCL, content `{owner, created_at}` (owner is a random token, never a
-  pid). A claim older than `claim_stale_seconds` is renamed to a unique name (atomic) and the taker creates its own claim;
-  the takeover is logged. The wait is bounded (`lock_wait_seconds`), expiry is ROUTER_LOCK_TIMEOUT. The loser of two
-  concurrent runs therefore waits, then finds the recorded state and adopts it.
-- Slots: at most `max_slots` AEVE subprocesses at once across callers, counted with slot files taken by the same rule.
+- Claim: an OS lock (msvcrt.locking on Windows, fcntl.flock elsewhere) on `claim.lock`, held through an open descriptor
+  for the whole run. The OS drops it when the process ends, so a crash releases it; there is no age-based takeover and
+  no rename. The wait is a bounded poll (`lock_wait_seconds`); expiry is ROUTER_LOCK_TIMEOUT, which means "another run
+  holds the story longer than this call waits": the caller retries later and then finds the recorded state.
+- Slots: at most `max_slots` AEVE subprocesses at once across callers, counted with slot files locked by the same rule.
 - Result intake: the host result is read once (size cap), written as a VST-owned copy and the COPY is hashed; AEVE only
   ever sees the copies. A copy that changes afterwards gives ROUTER_RESULT_DIGEST_MISMATCH.
 - Resume: a recorded verdict is adopted only when the packet, result copy and report digests and the pin head ALL match
   the files and the current pin; otherwise verify-handoff is re-run (read only). Each resume logs `adopted` or `rerun`.
   A step error never changes the recorded state (it only adds `last_error`), so a retry resumes where it stopped.
-- `router.log.jsonl`: one line per step with task_id, request_sha256, step, outcome, retry_count, resume, claim_takeover.
+- `router.log.jsonl`: one line per step with task_id, request_sha256, step, outcome, retry_count, resume.
   No packet, result or environment content.
 
 Atomic writes use `link_mode.replace_with_retry`. Standard library only, besides the router modules.
@@ -35,6 +35,13 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator, Mapping
+
+try:  # exactly one of the two exists: msvcrt on Windows, fcntl on POSIX
+    import msvcrt as _msvcrt
+    _fcntl = None
+except ImportError:
+    _msvcrt = None
+    import fcntl as _fcntl
 
 from . import link_mode
 from . import router_aeve_cli as rac
@@ -70,7 +77,6 @@ class RouterConfig:
     timeout: float = rac.DEFAULT_TIMEOUT_SECONDS
     max_retries: int = rac.DEFAULT_MAX_RETRIES
     jitter: tuple[float, float] = rac.DEFAULT_JITTER_SECONDS
-    claim_stale_seconds: float = 600.0
     lock_wait_seconds: float = 60.0
     poll_seconds: float = 0.5
     max_slots: int = 2
@@ -165,93 +171,78 @@ def _unlink(path: pathlib.Path) -> None:
         pass
 
 
-# ------------------------------------------------------------------ claim and slots (O_EXCL files with an owner token)
-def _create_exclusive(path: pathlib.Path, token: str, now: float) -> bool:
+# ------------------------------------------------------------------ claim and slots (OS file locks)
+# An OS lock on one byte of the lock file, held through an open descriptor for the whole critical section. The OS drops
+# it when the process ends, so a crash releases it: there is no age-based takeover, no rename and no restore. The lock
+# files are never deleted by a holder (only `sweep` or `release_work_dir` remove a directory whose claim is free).
+def _lock_nonblocking(fd: int) -> bool:
+    """One non-blocking attempt to lock byte 0 of `fd`. False when another holder has it."""
     try:
-        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    except FileExistsError:
+        if _msvcrt is not None:
+            os.lseek(fd, 0, os.SEEK_SET)
+            _msvcrt.locking(fd, _msvcrt.LK_NBLCK, 1)
+        else:
+            _fcntl.flock(fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+    except (BlockingIOError, PermissionError):
         return False
-    except OSError as exc:
-        raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, f"cannot create a lock file ({type(exc).__name__})") from exc
-    try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(json.dumps({"owner": token, "created_at": now}).encode("ascii"))
-            stream.flush()
-            os.fsync(stream.fileno())
     except OSError:
-        _unlink(path)
+        if _msvcrt is not None:  # msvcrt reports a held lock as OSError (EACCES/EDEADLK); poll again
+            return False
         raise
     return True
 
 
-def _read_claim(path: pathlib.Path) -> dict[str, Any] | None:
-    """{owner, created_at} of a lock file; None when it is gone. A torn file falls back to its mtime (owner None)."""
+def _try_lock_file(path: pathlib.Path) -> int | None:
+    """Open (create) the lock file and try to lock it: the open descriptor when held, None when someone else holds it.
+    On Windows an open of a delete-pending path raises PermissionError: that is 'not acquired, poll again'."""
     try:
-        raw = path.read_bytes()
-        mtime = path.stat().st_mtime
-    except FileNotFoundError:
+        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    except PermissionError:
         return None
-    except OSError:
-        return {"owner": None, "created_at": time.time()}
+    except OSError as exc:
+        raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, f"cannot open a lock file ({type(exc).__name__})") from exc
     try:
-        data = json.loads(raw.decode("ascii"))
-        owner, created = data["owner"], float(data["created_at"])
-        if isinstance(owner, str):
-            return {"owner": owner, "created_at": created}
-    except (ValueError, KeyError, TypeError, UnicodeDecodeError):
-        pass
-    return {"owner": None, "created_at": mtime}
+        if _lock_nonblocking(fd):
+            return fd
+    except OSError as exc:
+        os.close(fd)
+        raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, f"cannot lock a lock file ({type(exc).__name__})") from exc
+    except BaseException:
+        os.close(fd)
+        raise
+    os.close(fd)
+    return None
 
 
-def _try_acquire(path: pathlib.Path, token: str, cfg: RouterConfig) -> tuple[bool, bool]:
-    """One non-blocking attempt: (got it, took over a stale claim). A stale claim is renamed away atomically first."""
-    takeover = False
-    for _ in range(3):
-        if _create_exclusive(path, token, cfg.clock()):
-            return True, takeover
-        seen = _read_claim(path)
-        if seen is None:
-            continue
-        if cfg.clock() - seen["created_at"] <= cfg.claim_stale_seconds:
-            return False, False
-        unique = path.with_name(f"{path.name}.stale-{token}")
-        try:
-            link_mode.replace_with_retry(str(path), unique)
-        except FileNotFoundError:
-            continue
-        except OSError:
-            return False, False
-        if _read_claim(unique) != seen:  # we renamed a claim that was taken fresh in between: put it back
-            try:
-                os.link(unique, path)
-            except OSError:
-                pass
-            _unlink(unique)
-            return False, False
-        _unlink(unique)
-        takeover = True
-    return False, takeover
-
-
-def _release(path: pathlib.Path, token: str) -> None:
-    seen = _read_claim(path)
-    if seen is not None and seen["owner"] == token:
-        _unlink(path)
+def _claim_held(path: pathlib.Path) -> bool:
+    """True when `path` is a lock file that another holder has (or that cannot be probed). A missing file is free."""
+    try:
+        fd = os.open(path, os.O_RDWR)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+    try:
+        return not _lock_nonblocking(fd)
+    except OSError:
+        return True
+    finally:
+        os.close(fd)  # closing drops a lock taken by the probe
 
 
 @contextmanager
-def _held(paths: list[pathlib.Path], cfg: RouterConfig, what: str) -> Iterator[tuple[pathlib.Path, bool]]:
-    """Hold the first free lock file of `paths`; wait (bounded) for one. Yields (path, took_over_a_stale_claim)."""
-    token = secrets.token_hex(16)
+def _held(paths: list[pathlib.Path], cfg: RouterConfig, what: str) -> Iterator[pathlib.Path]:
+    """Hold the first free lock file of `paths` until the block ends; poll (bounded by `lock_wait_seconds`) for one.
+    Yields the path. ROUTER_LOCK_TIMEOUT when none became free in time."""
     deadline = cfg.monotonic() + cfg.lock_wait_seconds
     while True:
         for path in paths:
-            got, takeover = _try_acquire(path, token, cfg)
-            if got:
+            fd = _try_lock_file(path)
+            if fd is not None:
                 try:
-                    yield path, takeover
+                    yield path
                 finally:
-                    _release(path, token)
+                    os.close(fd)
                 return
         if cfg.monotonic() >= deadline:
             raise RouterError(ROUTER_LOCK_TIMEOUT, f"{what}: no lock within {cfg.lock_wait_seconds:g} s")
@@ -298,54 +289,76 @@ def _is_blocked(state: Mapping[str, Any]) -> bool:
     return bool(state.get("last_error")) or (state.get("state") == DONE and state.get("outcome") != "ROUTED_VERIFIED")
 
 
+def _sweep_tmp(router_root: pathlib.Path, cfg: RouterConfig, now: float) -> int:
+    removed = 0
+    for base, dirs, files in os.walk(router_root, followlinks=False):  # a walk error on one directory is skipped
+        dirs[:] = [name for name in dirs if name != AEVE_STATE_DIRNAME]  # AEVE's own files are not ours to sweep
+        for name in files:
+            full = os.path.join(base, name)
+            try:
+                if name.endswith(".tmp") and not _is_link(full) and now - os.stat(full).st_mtime > cfg.tmp_max_age_seconds:
+                    os.unlink(full)
+                    removed += 1
+            except OSError:  # gone already (a concurrent sweep or writer) or in use: the next run retries
+                continue
+    return removed
+
+
+def _sweep_task_dir(task_dir: pathlib.Path, router_root: pathlib.Path, cfg: RouterConfig, now: float) -> int:
+    removed = 0
+    for pending in list(task_dir.iterdir()):
+        try:
+            if not pending.name.endswith("-pending") or _claim_held(pending / CLAIM_NAME):
+                continue
+            state_path = pending / STATE_NAME
+            if not state_path.is_file() or now - state_path.stat().st_mtime <= cfg.blocked_retention_seconds:
+                continue
+            state = json.loads(state_path.read_text(encoding="ascii"))
+            if not isinstance(state, dict) or not _is_blocked(state):
+                continue
+            prefix = pending.name[: -len("pending")]
+            for sibling in list(task_dir.iterdir()):
+                if sibling.name.startswith(prefix) and _remove_tree(sibling, router_root):
+                    removed += 1
+        except (OSError, ValueError):
+            continue
+    return removed
+
+
 def sweep(router_root: pathlib.Path, cfg: RouterConfig) -> dict[str, int]:
     """Remove `*.tmp` files older than `tmp_max_age_seconds` and BLOCKED work directories older than
-    `blocked_retention_seconds`. Touches only paths under `router_root`; a directory with a claim is skipped."""
+    `blocked_retention_seconds`. Touches only paths under `router_root`; a directory whose claim is held is skipped.
+    A file or directory that vanishes or cannot be read is skipped; it never ends the sweep."""
     counts = {"tmp": 0, "blocked_dirs": 0}
     now = cfg.clock()
     try:
-        for base, dirs, files in os.walk(router_root, followlinks=False):
-            dirs[:] = [name for name in dirs if name != AEVE_STATE_DIRNAME]  # AEVE's own files are not ours to sweep
-            for name in files:
-                full = os.path.join(base, name)
-                if name.endswith(".tmp") and not _is_link(full) and now - os.stat(full).st_mtime > cfg.tmp_max_age_seconds:
-                    os.unlink(full)
-                    counts["tmp"] += 1
+        counts["tmp"] = _sweep_tmp(router_root, cfg, now)
         for task_dir in list(router_root.iterdir()):
-            if task_dir.name.startswith("_") or not task_dir.is_dir() or _is_link(str(task_dir)):
+            try:
+                if task_dir.name.startswith("_") or not task_dir.is_dir() or _is_link(str(task_dir)):
+                    continue
+                counts["blocked_dirs"] += _sweep_task_dir(task_dir, router_root, cfg, now)
+            except OSError:
                 continue
-            for pending in list(task_dir.iterdir()):
-                if not pending.name.endswith("-pending") or (pending / CLAIM_NAME).exists():
-                    continue
-                state_path = pending / STATE_NAME
-                if not state_path.is_file() or now - state_path.stat().st_mtime <= cfg.blocked_retention_seconds:
-                    continue
-                try:
-                    state = json.loads(state_path.read_text(encoding="ascii"))
-                except (OSError, ValueError):
-                    continue
-                if not isinstance(state, dict) or not _is_blocked(state):
-                    continue
-                prefix = pending.name[: -len("pending")]
-                for sibling in list(task_dir.iterdir()):
-                    if sibling.name.startswith(prefix) and _remove_tree(sibling, router_root):
-                        counts["blocked_dirs"] += 1
     except OSError:
         pass
     return counts
 
 
-def release_work_dir(state_root: str | os.PathLike, task_id: str, request_sha256: str,
-                     cfg: RouterConfig = RouterConfig()) -> int:
-    """Delete the work directories of one request after the story's final package is built (D5). Returns how many."""
-    if not isinstance(task_id, str) or not rr.TASK_ID_RE.match(task_id) or len(request_sha256) != 64:
+def release_work_dir(state_root: str | os.PathLike, task_id: str, request_sha256: str) -> int:
+    """Delete the work directories of one request after the story's final package is built (D5). Returns how many.
+    Refuses (ROUTER_LOCK_TIMEOUT) while a run holds the request's claim."""
+    if not rr.valid_task_id(task_id) or not isinstance(request_sha256, str) or len(request_sha256) != 64:
         raise RouterError(rr.ROUTER_BAD_REQUEST, "task_id or request_sha256 is malformed")
     router_root = pathlib.Path(state_root) / ROUTER_DIRNAME
     task_dir = router_root / task_id
     removed = 0
     if task_dir.is_dir():
-        for child in list(task_dir.iterdir()):
-            if child.name.startswith(request_sha256[:16] + "-") and _remove_tree(child, router_root):
+        children = [child for child in list(task_dir.iterdir()) if child.name.startswith(request_sha256[:16] + "-")]
+        if any(_claim_held(child / CLAIM_NAME) for child in children):
+            raise RouterError(ROUTER_LOCK_TIMEOUT, "release_work_dir: a run holds the claim of this request")
+        for child in children:
+            if _remove_tree(child, router_root):
                 removed += 1
         try:
             task_dir.rmdir()
@@ -395,14 +408,13 @@ class _Run:
         self.router_root = state_root / ROUTER_DIRNAME
         self.task_dir = self.router_root / self.task_id
         self.base = self.task_dir / f"{self.request_sha[:16]}-pending"
-        self.takeover = False
         self.resume = "none"
         self.state: dict[str, Any] = {}
 
     # -- state file
     def _log(self, step: str, outcome: str, retries: int = 0) -> None:
         _log(self.router_root, self.cfg, task_id=self.task_id, request_sha256=self.request_sha, step=step,
-             outcome=outcome, retry_count=retries, resume=self.resume, claim_takeover=self.takeover)
+             outcome=outcome, retry_count=retries, resume=self.resume)
 
     def _load(self) -> None:
         raw = _read_bytes(self.base / STATE_NAME, 64 * 1024)
@@ -469,7 +481,17 @@ class _Run:
         return self.task_dir / f"{self.request_sha[:16]}-{result_sha[:16]}"
 
     def _step_copy(self) -> bool:
-        """Copy the host result when a new one is present. True when a copy was made."""
+        """Copy the host result when a new one is present. True when a copy was made. A failure is logged."""
+        try:
+            return self._copy_result()
+        except RouterError as exc:
+            self._log("result_copy", exc.reason)
+            raise
+        except OSError as exc:
+            self._log("result_copy", rac.ROUTER_STATE_DIR_UNUSABLE + ":" + type(exc).__name__)
+            raise
+
+    def _copy_result(self) -> bool:
         source = self.result_source
         if source is None:
             return False
@@ -491,14 +513,23 @@ class _Run:
         self._log("result_copy", "OK")
         return True
 
+    def _result_dir_ok(self, value: object) -> bool:
+        """The recorded result directory name must be exactly `<request[:16]>-<16 hex>`: no separator, no traversal."""
+        return (isinstance(value, str) and len(value) == 33 and value.startswith(self.request_sha[:16] + "-")
+                and all(ch in "0123456789abcdef" for ch in value[17:]))
+
     def _result_path(self) -> pathlib.Path:
-        return self.task_dir / self.state["result_dir"] / "result.json"
+        result_dir = self.state.get("result_dir")
+        if not self._result_dir_ok(result_dir):
+            raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, "the recorded result directory is missing or malformed")
+        return self.task_dir / result_dir / "result.json"
 
     def _ensure_packet(self) -> dict[str, Any]:
         if not self._packet_ok():
             self._step_packet(self.state["state"])  # a re-run packet must not move the recorded state
         raw = _read_bytes(self.base / "packet.json", rr.MAX_PACKET_BYTES)
-        assert raw is not None
+        if raw is None:
+            raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, "the packet file is missing after the packet step")
         return rr.validate_packet(raw, self.request)
 
     def _step_verify(self) -> None:
@@ -508,7 +539,8 @@ class _Run:
             self._log("verify", ROUTER_RESULT_DIGEST_MISMATCH)
             raise RouterError(ROUTER_RESULT_DIGEST_MISMATCH, "the result copy differs from the recorded digest")
         result_raw = _read_bytes(result_path, self.cfg.max_result_bytes)
-        assert result_raw is not None
+        if result_raw is None:
+            raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, "the result copy is missing")
         try:
             rr.parse_strict_json_object(result_raw, "result")
         except RouterError as exc:
@@ -540,7 +572,7 @@ class _Run:
         if not self._packet_ok():
             bad.append("packet_sha256")
         result_dir = self.state.get("result_dir")
-        if not isinstance(result_dir, str) or "/" in result_dir or "\\" in result_dir or ".." in result_dir:
+        if not self._result_dir_ok(result_dir):
             return bad + ["result_dir"]
         base = self.task_dir / result_dir
         if _file_sha(base / "result.json") != self.state.get("result_sha256"):
@@ -593,7 +625,7 @@ class _Run:
             result_sha256=state.get("result_sha256") if done else None,
             report_sha256=state.get("report_sha256") if done else None, pin_head=self.pin_head,
             packet_path=str(self.base / "packet.json"),
-            work_dir=str(self.task_dir / result_dir) if done and isinstance(result_dir, str) else str(self.base),
+            work_dir=str(self.task_dir / result_dir) if done and self._result_dir_ok(result_dir) else str(self.base),
             resume=self.resume, reason=state.get("reason") or "" if done else "")
 
 
@@ -622,7 +654,7 @@ def route_task(
         raise RouterError(ROUTER_NOT_SELECTED, "the current link mode is not router")
     if (not isinstance(request, Mapping) or request.get("schema_version") != rr.REQUEST_SCHEMA
             or request.get("role") not in rr.ROUTER_ROLES or not isinstance(request.get("task_id"), str)
-            or not rr.TASK_ID_RE.match(request["task_id"])):
+            or not rr.valid_task_id(request["task_id"])):
         raise RouterError(rr.ROUTER_BAD_REQUEST, "request is not a router task packet request")
     pin = pin_head if pin_head is not None else rac.load_pin_head()
     run = _Run(request, rr.request_bytes(request), pathlib.Path(state_root), pathlib.Path(aeve_root),
@@ -630,10 +662,7 @@ def route_task(
     _mkdir(run.base)
     _mkdir(run.router_root / AEVE_STATE_DIRNAME)
     sweep(run.router_root, config)
-    with _held([run.base / CLAIM_NAME], config, "claim") as (_path, takeover):
-        run.takeover = takeover
-        if takeover:
-            run._log("claim", "STALE_CLAIM_TAKEN_OVER")
+    with _held([run.base / CLAIM_NAME], config, "claim"):
         try:
             return run.run()
         except RouterError as exc:

@@ -2623,3 +2623,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SHORTCOMING (two tests hard-coded the live AEVE path D:/Repo/AEVE, so they failed as soon as that checkout moved to another head).
 - Rule: a test that needs an external repository takes its path from an environment variable and skips with a reason when the checkout is not at the committed pin head; never read a live working checkout as a fixture.
+
+## 2026-11-14 — LINK2-FIX2 file claims with age takeover were not a safe lock
+
+- Kind: FAILURE (three reviewers independently showed that the rename-and-restore stale-claim takeover lets two of three contenders hold the lock, that no heartbeat covered a run longer than the stale age, and that on Windows a delete-pending path raises PermissionError instead of FileExistsError).
+- Rule: use an OS lock held for the process lifetime for mutual exclusion (the OS releases it on a crash); never build a lock from an age rule plus rename, and derive any timeout from the computed worst-case run time.

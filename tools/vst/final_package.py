@@ -457,12 +457,13 @@ _ROUTER_REQUIRED_KEYS = {"outcome", "status", "task_id", "request_sha256", "pack
                          "report_sha256", "pin_head", "result_sha256_recomputed"}
 
 
-def _router_section(raw: Any, required: bool, expected_pin: Any, refusals: list) -> dict | None:
+def _router_section(raw: Any, required: bool, expected_pin: Any, refusals: list, story_id: str) -> dict | None:
     """LINK2-T4b: the router row (tools/vst/router_mode.report_for_package) as a package section, or None.
 
-    With `required` the row must exist, carry outcome ROUTED_VERIFIED and status VERIFIED, and name the expected pin;
-    otherwise ROUTER_NOT_VERIFIED. Any row whose recomputed result digest differs from the recorded one is refused with
-    ROUTER_RESULT_DIGEST_MISMATCH. UNKNOWN, REJECTED and INVALID are never accepted as required."""
+    `required` demands that a row exists. Whenever a row is supplied (required or not) it must carry outcome
+    ROUTED_VERIFIED and status VERIFIED and name `story_id` as its task_id, else ROUTER_NOT_VERIFIED; with `required` it
+    must also name the expected pin. Any row whose recomputed result digest differs from the recorded one is refused with
+    ROUTER_RESULT_DIGEST_MISMATCH. UNKNOWN, REJECTED and INVALID are never accepted. No row: the package is unchanged."""
     if raw is None:
         if required:
             _add(refusals, ROUTER_NOT_VERIFIED, "router mode is required but no router row was supplied")
@@ -482,7 +483,10 @@ def _router_section(raw: Any, required: bool, expected_pin: Any, refusals: list)
         "aeve_request_sha256": _hex(row.get("aeve_request_sha256"), "router_report.aeve_request_sha256", _SHA256,
                                     optional=True),
     }
-    if required:
+    if section["outcome"] != "ROUTED_VERIFIED" or section["status"] != "VERIFIED":
+        _add(refusals, ROUTER_NOT_VERIFIED, f"router outcome is {section['outcome']} (status {section['status']}); "
+             "only ROUTED_VERIFIED with status VERIFIED is accepted")
+    elif required:
         pin = expected_pin
         if pin is None:
             from .router_aeve_cli import load_pin_head  # lazy: only router mode needs the pin file
@@ -493,11 +497,10 @@ def _router_section(raw: Any, required: bool, expected_pin: Any, refusals: list)
                 raise _Bad(BAD_INPUT, f"expected router pin unavailable: {exc.reason}") from exc
         if pin is not None:
             _hex(pin, "router_pin_head", _HEX40)
-        if section["outcome"] != "ROUTED_VERIFIED" or section["status"] != "VERIFIED":
-            _add(refusals, ROUTER_NOT_VERIFIED, f"router outcome is {section['outcome']} (status {section['status']}); "
-                 "only ROUTED_VERIFIED with status VERIFIED is accepted")
-        elif section["pin_head"] != pin:
+        if section["pin_head"] != pin:
             _add(refusals, ROUTER_NOT_VERIFIED, "router row names an AEVE pin head that is not the expected pin")
+    if section["task_id"] != story_id:
+        _add(refusals, ROUTER_NOT_VERIFIED, "router row belongs to another story than the package story_id")
     if section["result_sha256_recomputed"] != section["result_sha256"]:
         _add(refusals, ROUTER_RESULT_DIGEST_MISMATCH, "the result copy hashes differently now than when it was verified")
     return section
@@ -755,7 +758,7 @@ def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, te
     diff["changed_paths_sha256"] = paths_digest
     tests, not_run = _tests_section(test_evidence, allow_not_run, required_test_ids, head, refusals)
     review = _review_section(review_results, story_id, head, replay_store_verified, paths_digest, refusals)
-    router_row = _router_section(router_report, router_required, router_pin_head, refusals)
+    router_row = _router_section(router_report, router_required, router_pin_head, refusals, story_id)
     receipt_rows = _receipts_section(receipts, head, refusals)
     isolation = _isolation_section(isolation_proof, head, refusals)
     share = _share_section(patch_origin_share, head, diff_sha256, refusals)

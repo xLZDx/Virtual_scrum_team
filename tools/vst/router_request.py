@@ -38,6 +38,8 @@ MAX_PACKET_BYTES = 1024 * 1024  # D5 size cap for a packet
 MAX_ITEMS = 200  # AEVE _MAX_ITEMS
 MAX_TEXT = 500  # AEVE _MAX_TEXT
 TASK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+_WINDOWS_RESERVED = frozenset(
+    {"con", "prn", "aux", "nul"} | {f"com{i}" for i in range(1, 10)} | {f"lpt{i}" for i in range(1, 10)})
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}\Z")
 _AC_RE = re.compile(r"^AC-([1-9][0-9]*)\Z")
 _REASON_LIMIT = 120
@@ -47,6 +49,14 @@ ROUTER_BAD_REQUEST = "ROUTER_BAD_REQUEST"
 ROUTER_PACKET_INVALID = "ROUTER_PACKET_INVALID"
 ROUTER_SIZE_CAP = "ROUTER_SIZE_CAP"
 ROUTER_BAD_OUTPUT = "ROUTER_BAD_OUTPUT"
+
+
+def valid_task_id(value: object) -> bool:
+    """TASK_ID_RE plus the Windows file-name rules: no trailing dot, no reserved device name (con, prn, aux, nul,
+    com1-9, lpt1-9) as the part before the first dot, case-insensitive. The id becomes a directory name."""
+    if not isinstance(value, str) or not TASK_ID_RE.match(value) or value.endswith("."):
+        return False
+    return value.split(".", 1)[0].lower() not in _WINDOWS_RESERVED
 
 
 class RouterError(Exception):
@@ -94,7 +104,7 @@ def build_request(
     """The AEVE task packet request for one story, or RouterError(ROUTER_BAD_REQUEST). Starts no process."""
     if role not in ROUTER_ROLES:
         raise RouterError(ROUTER_BAD_REQUEST, "role is not a HANDOFF_ASSISTED role")
-    if not isinstance(task_id, str) or not TASK_ID_RE.match(task_id):
+    if not valid_task_id(task_id):
         raise RouterError(ROUTER_BAD_REQUEST, "task_id does not match the allowed pattern")
     return {
         "schema_version": REQUEST_SCHEMA,
@@ -136,7 +146,7 @@ def parse_strict_json_object(raw: bytes, label: str) -> dict[str, Any]:
         raise RouterError(ROUTER_BAD_OUTPUT, f"{label}: NUL byte")
     try:
         text = raw.decode("utf-8")
-        if text.startswith("﻿"):
+        if text.startswith("\ufeff"):
             raise ValueError("BOM")
         value = json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constant)
     except (UnicodeDecodeError, ValueError, RecursionError) as exc:
