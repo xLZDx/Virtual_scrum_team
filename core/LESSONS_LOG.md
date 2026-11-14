@@ -2618,3 +2618,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SUCCESS (the three defects the functional tests left failing were fixed in production code only, from the test expectations).
 - Rule: when a recovery state is re-entered, re-read the external input instead of trusting the recorded copy, and keep the recorded digest as the only skip condition.
+
+## 2026-11-14 — LINK2-TEST real-AEVE tests no longer depend on a moving live checkout
+
+- Kind: SHORTCOMING (two tests hard-coded the live AEVE path D:/Repo/AEVE, so they failed as soon as that checkout moved to another head).
+- Rule: a test that needs an external repository takes its path from an environment variable and skips with a reason when the checkout is not at the committed pin head; never read a live working checkout as a fixture.

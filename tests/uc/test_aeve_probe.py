@@ -20,7 +20,7 @@ from uc import aeve_probe
 
 from tests.uc import ucsupport as S
 
-REAL_AEVE = pathlib.Path("D:/Repo/AEVE")
+REAL_AEVE = S.real_aeve_root()  # env AEVE_PIN_CHECKOUT, else D:/Repo/AEVE
 
 FAKE_MAIN = '''\
 import json, os, sys
@@ -250,7 +250,7 @@ def test_cli_ready_and_blocked_exit_codes(fake, tmp_path, capsys):
 
 # ------------------------------------------------------------------ the ONE real-AEVE test
 @pytest.mark.real_aeve
-@pytest.mark.skipif(not (REAL_AEVE / "src" / "aeve" / "__main__.py").is_file(), reason="real AEVE checkout D:/Repo/AEVE not present")
+@pytest.mark.skipif(bool(S.real_aeve_skip_reason()), reason=S.real_aeve_skip_reason() or "real AEVE at the pin")
 def test_REAL_AEVE_probe_matrix_and_committed_role_table_validate_and_aeve_unchanged():
     """The only test that runs the real AEVE (U1-2 and U1-4 evidence).  ~20-40 s.
 
