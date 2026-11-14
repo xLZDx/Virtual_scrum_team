@@ -3309,3 +3309,7 @@ GPT-PM round 1: VERDICT APPROVE (scoped, static review), head efb5828, base e261
 ## 2026-11-14 LINK-2 router design (documentation first)
 
 Decision (agent in the operator role; operator said AEVE is finished, merge and prepare for testing): start sprint LINK-2 to build router mode on the merged AEVE S20 commands `aeve packet` and `aeve verify-handoff` (AEVE origin/main 35e5de8). Wrote docs/sdlc/LINK2_ROUTER_DESIGN.md; architect and reliability-reviewer found 12 MAJOR and 6 MINOR issues, all folded into revision 2. Rejected: in-process import of AEVE, VST re-implementing the scope checks, UNKNOWN as a soft pass, omitting --root, availability read from the JSON file. No code changed; ROUTER_CAPABILITY_READY stays False. Tests NOT_RUN.
+
+## 2026-11-14 LINK2-T1 aeve_pin bumped to AEVE 35e5de8
+
+Decision (agent): rebuilt catalog/role_table.json against a clean scratch checkout of AEVE at 35e5de868edaa37e021955147afb587011ca39c0 (probe READY, 0 tracked and 0 untracked changes; new matrix digest b5f56279...fa39). Four skills (codex-consensus, pm-bridge, rosetta, update-config) gained AEVE executors and moved from OUT_OF_SCOPE to LOCAL_PLUS_MODEL by evidence; the five HANDOFF_ASSISTED roles of the matrix equal the design set. Existing tests that used rosetta as the out-of-scope example now use loop-operator. Tests NOT_RUN; validate against the new pin printed VALID, against the old table it printed the pin mismatch and exited 1.

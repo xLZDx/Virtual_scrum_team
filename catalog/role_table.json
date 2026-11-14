@@ -1,18 +1,18 @@
 {
   "aeve_pin": {
-    "head": "8a9f6c1a684e03eac252b285a96a11d363dbc9e6",
-    "matrix_digest_sha256": "9822b8531f740527b9ddd4c6f6abf9adfd3bc3675a4d4556f6ef826594217561"
+    "head": "35e5de868edaa37e021955147afb587011ca39c0",
+    "matrix_digest_sha256": "b5f56279eb5ae4d722fff371be32271c8d93f4a1e1a1bbbed7c413830189fa39"
   },
   "counts": {
     "by_class": {
       "LOCAL": 9,
-      "LOCAL_PLUS_MODEL": 58,
+      "LOCAL_PLUS_MODEL": 62,
       "MODEL_ONLY": 18,
-      "OUT_OF_SCOPE": 8
+      "OUT_OF_SCOPE": 4
     },
     "by_coverage_state": {
-      "COVERED_PARTIAL": 50,
-      "NOT_APPLICABLE": 26,
+      "COVERED_PARTIAL": 54,
+      "NOT_APPLICABLE": 22,
       "NOT_COVERED_NO_EXECUTOR": 2,
       "NOT_COVERED_NO_PROFILE": 15
     },
@@ -812,15 +812,17 @@
     {
       "aeve_profile": "codex-consensus",
       "canonical_role": "codex-consensus",
-      "class": "OUT_OF_SCOPE",
-      "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_APPLICABLE",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "OUT_OF_SCOPE",
-      "executors": [],
+      "executors": [
+        "g2.consensus-record-rules"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "codex-consensus",
-      "reason": "Optional second-opinion model call, outside the deterministic app."
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": "context-memory-hygiene",
@@ -1075,15 +1077,17 @@
     {
       "aeve_profile": "pm-bridge",
       "canonical_role": "pm-bridge",
-      "class": "OUT_OF_SCOPE",
-      "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_APPLICABLE",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "OUT_OF_SCOPE",
-      "executors": [],
+      "executors": [
+        "g2.pm-bridge-record-rules"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "pm-bridge",
-      "reason": "Transport to an external reviewer, not a delivery check."
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": null,
@@ -1172,15 +1176,17 @@
     {
       "aeve_profile": "rosetta",
       "canonical_role": "rosetta",
-      "class": "OUT_OF_SCOPE",
-      "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_APPLICABLE",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "OUT_OF_SCOPE",
-      "executors": [],
+      "executors": [
+        "g2.rosetta-record-rules"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "rosetta",
-      "reason": "Plan/GO state is held by the state store."
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": null,
@@ -1317,15 +1323,17 @@
     {
       "aeve_profile": "update-config",
       "canonical_role": "update-config",
-      "class": "OUT_OF_SCOPE",
-      "class_upgraded_by_evidence": false,
-      "coverage_state": "NOT_APPLICABLE",
+      "class": "LOCAL_PLUS_MODEL",
+      "class_upgraded_by_evidence": true,
+      "coverage_state": "COVERED_PARTIAL",
       "draft_class": "OUT_OF_SCOPE",
-      "executors": [],
+      "executors": [
+        "g2.update-config-rules"
+      ],
       "kind": "skill",
       "model_remainder_hint": "",
       "name": "update-config",
-      "reason": "Operator-only permission edit; not a check."
+      "reason": "AEVE lists deterministic executors for this role"
     },
     {
       "aeve_profile": "product-ux-reviewer",

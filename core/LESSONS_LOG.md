@@ -2567,3 +2567,7 @@ Both MAJOR defects were removed before the round by the reviewer pass and one re
 ## 2026-11-14 SUCCESS LINK-2 design reviewed by two role reviewers before any code
 
 The first design draft had 12 MAJOR defects (false claim about verdict names, adapter hard-wired to review, no claim lock, unbound result file, flip order contradicting the approval binding), caught by reading, not by running anything. Rule: review a design against the real code before implementing; a writer who cannot read every file must mark those facts as unverified.
+
+## 2026-11-14 SHORTCOMING LINK2-T1 a pin bump silently changed four role classes
+
+Rebuilding the role table at the new AEVE head moved four skills from OUT_OF_SCOPE to LOCAL_PLUS_MODEL, which broke tests that used one of them as the out-of-scope example; the design only named the head and digest tests. Layer: caught by diffing the rebuilt table, not by a run. Rule: after a pin rebuild, diff every table entry and grep tests for names whose class changed.
