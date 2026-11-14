@@ -477,8 +477,8 @@ class _Run:
         if data is None:
             return False
         wanted = _sha(data)
-        if self.state.get("state") == DONE and wanted == self.state.get("result_sha256"):
-            return False  # the recorded verdict is for this very result
+        if self.state.get("state") in (DONE, RESULT_COPIED) and wanted == self.state.get("result_sha256"):
+            return False  # the recorded copy or verdict is for this very result
         directory = self._result_dir(wanted)
         _mkdir(directory)
         copy = directory / "result.json"
@@ -549,6 +549,16 @@ class _Run:
             bad.append("report_sha256")
         if self.state.get("outcome") not in rac.OUTCOME_FOR_STATUS.values() or self.state.get("status") not in rac.EXIT_FOR_STATUS:
             bad.append("row")
+        raw = _read_bytes(base / "report.json", rr.MAX_PACKET_BYTES)
+        derived = None
+        if raw is not None:
+            try:
+                derived = rr.parse_strict_json_object(raw, "report").get("status")
+            except RouterError:
+                derived = None
+        if (not isinstance(derived, str) or derived not in rac.OUTCOME_FOR_STATUS
+                or self.state.get("status") != derived or self.state.get("outcome") != rac.OUTCOME_FOR_STATUS[derived]):
+            bad.append("verdict")  # the recorded verdict is not the one the report gives
         return bad
 
     def run(self) -> RouterRow:
@@ -556,7 +566,7 @@ class _Run:
         if self.state["state"] == NEW:
             self._step_packet()
         copied = False
-        if self.state["state"] in (AWAITING_RESULT, DONE):
+        if self.state["state"] in (AWAITING_RESULT, RESULT_COPIED, DONE):
             copied = self._step_copy()
         if self.state["state"] == RESULT_COPIED:
             # RESULT_COPIED found on entry means a crash between copy and verdict: verify-handoff is re-run (read only)

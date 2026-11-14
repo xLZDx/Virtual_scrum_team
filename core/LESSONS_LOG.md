@@ -2613,3 +2613,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 - Kind: SHORTCOMING (three product defects reached the tests: a task id pattern ending in a bare dollar accepts a trailing line feed, a recorded verdict in state.json is adopted without comparing it with report.json, and a torn result copy blocks the story even after the host fixes the file).
 - Facts: final_package.py already uses the end-of-string anchor for the same job, router_request.py does not; the design said "adopt only if every digest matches" but the outcome field had no digest check; the timing assertion that exactly two calls overlap was flaky under load and was relaxed to a bound.
 - Rule: validate identifiers with a full-match anchor, derive an adopted verdict from the digested file instead of trusting a sibling field, and assert concurrency caps as upper bounds with an ordering check.
+
+## 2026-11-14 — LINK2-FIX defects fixed from the failing tests
+
+- Kind: SUCCESS (the three defects the functional tests left failing were fixed in production code only, from the test expectations).
+- Rule: when a recovery state is re-entered, re-read the external input instead of trusting the recorded copy, and keep the recorded digest as the only skip condition.

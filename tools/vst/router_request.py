@@ -37,9 +37,9 @@ ROUTER_ROLES = (
 MAX_PACKET_BYTES = 1024 * 1024  # D5 size cap for a packet
 MAX_ITEMS = 200  # AEVE _MAX_ITEMS
 MAX_TEXT = 500  # AEVE _MAX_TEXT
-TASK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-_AC_RE = re.compile(r"^AC-([1-9][0-9]*)$")
+TASK_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}\Z")
+_AC_RE = re.compile(r"^AC-([1-9][0-9]*)\Z")
 _REASON_LIMIT = 120
 
 # reason codes (design D6)
