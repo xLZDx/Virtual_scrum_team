@@ -2571,3 +2571,7 @@ The first design draft had 12 MAJOR defects (false claim about verdict names, ad
 ## 2026-11-14 SHORTCOMING LINK2-T1 a pin bump silently changed four role classes
 
 Rebuilding the role table at the new AEVE head moved four skills from OUT_OF_SCOPE to LOCAL_PLUS_MODEL, which broke tests that used one of them as the out-of-scope example; the design only named the head and digest tests. Layer: caught by diffing the rebuilt table, not by a run. Rule: after a pin rebuild, diff every table entry and grep tests for names whose class changed.
+
+## 2026-11-14 SUCCESS LINK2-T2 guard checks reject Python bool-as-int
+
+In Python False == 0, so a guard written as llm_calls == 0 would accept false from a foreign producer. The validator tests the exact type for the integer guard and uses is-False for the boolean guards. Rule: when a contract says integer 0 or boolean false, compare by identity or exact type, never by equality.

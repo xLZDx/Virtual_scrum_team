@@ -3313,3 +3313,7 @@ Decision (agent in the operator role; operator said AEVE is finished, merge and 
 ## 2026-11-14 LINK2-T1 aeve_pin bumped to AEVE 35e5de8
 
 Decision (agent): rebuilt catalog/role_table.json against a clean scratch checkout of AEVE at 35e5de868edaa37e021955147afb587011ca39c0 (probe READY, 0 tracked and 0 untracked changes; new matrix digest b5f56279...fa39). Four skills (codex-consensus, pm-bridge, rosetta, update-config) gained AEVE executors and moved from OUT_OF_SCOPE to LOCAL_PLUS_MODEL by evidence; the five HANDOFF_ASSISTED roles of the matrix equal the design set. Existing tests that used rosetta as the out-of-scope example now use loop-operator. Tests NOT_RUN; validate against the new pin printed VALID, against the old table it printed the pin mismatch and exited 1.
+
+## 2026-11-14 LINK2-T2 router request builder and packet validation
+
+Decision (agent): added tools/vst/router_request.py as pure functions (no process, no file). It owns the constant tuple of the five HANDOFF_ASSISTED roles, the request builder with ROUTER_BAD_REQUEST checks before any AEVE call, canonical request bytes, and packet validation (size cap, strict JSON with duplicate keys refused, schema, COMPLETE, role and task_id equal the request, AC-1..AC-n ids, zero-model guards where llm_calls must be the integer 0). Paths are not normalised by VST: AEVE owns path rules and its INVALID answer becomes ROUTER_PACKET_INVALID. AEVE request_sha256 is stored as opaque, as the design says. Tests NOT_RUN; hand-traced against AC-4 to AC-7 only.
