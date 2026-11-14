@@ -20,6 +20,31 @@ def real_table() -> dict:
     return json.loads(TABLE_PATH.read_text(encoding="utf-8"))
 
 
+REAL_AEVE_DEFAULT = "D:/Repo/AEVE"
+
+
+def real_aeve_root() -> pathlib.Path:
+    """Real AEVE checkout: env AEVE_PIN_CHECKOUT (same convention as tests/vst/test_router_e2e_real_aeve.py), else the old path."""
+    return pathlib.Path(os.environ.get("AEVE_PIN_CHECKOUT") or REAL_AEVE_DEFAULT)
+
+
+def real_aeve_skip_reason() -> str:
+    """Empty string when the real AEVE checkout exists and is at the committed pin head; else why the test must skip."""
+    root = real_aeve_root()
+    if not (root / "src" / "aeve" / "__main__.py").is_file():
+        return f"real AEVE checkout not present at {root} (set AEVE_PIN_CHECKOUT to a checkout at the pin)"
+    pin = (real_table().get("aeve_pin") or {}).get("head")
+    try:
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True,
+                              timeout=60).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        head = ""
+    if head != pin:
+        return (f"AEVE checkout {root} is at {head or 'an unknown head'}, not the committed pin {pin}; "
+                f"set AEVE_PIN_CHECKOUT to a clean worktree at the pin")
+    return ""
+
+
 def real_table_sha256() -> str:
     """sha256 of the exact bytes of the committed catalog/role_table.json (what router.load_table_with_digest reports)."""
     import hashlib

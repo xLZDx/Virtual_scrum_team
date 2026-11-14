@@ -22,6 +22,7 @@ import sys
 import tempfile
 import threading
 import time
+from typing import Callable, Sequence
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
@@ -32,6 +33,12 @@ DEFAULT_TIMEOUT_SECONDS = 120.0
 DEFAULT_STDOUT_CAP = 8 * 1024 * 1024
 STDERR_CAP = 64 * 1024
 OK_EXIT_CODES = (0, 3)
+# Accepted exit codes per AEVE command (LINK2-T3A); any other exit is AEVE_EXIT.
+OK_EXIT_CODES_BY_COMMAND = {
+    "review": OK_EXIT_CODES,
+    "packet": (0, 3),
+    "verify-handoff": (0, 1, 2, 3),
+}
 REQUIRED_RESPONSE_KEYS = (
     "status", "request_id", "head", "snapshot_sha256", "iteration_id", "executor_ids",
     "results", "findings", "uncovered", "llm_calls", "executed_project_code", "source_modified", "dirty",
@@ -40,6 +47,8 @@ REQUIRED_RESPONSE_KEYS = (
 
 class AdapterBlocked(Exception):
     """The review could not be obtained; ``reason`` is a stable code and the result is BLOCKED."""
+
+    tree_dead: bool | None = None  # set on TIMEOUT: True when the child process is confirmed gone
 
     def __init__(self, reason: str, detail: str = "") -> None:
         super().__init__(f"{reason}: {detail}" if detail else reason)
@@ -129,8 +138,16 @@ def _child_env(aeve_root: pathlib.Path, state_dir: pathlib.Path) -> dict[str, st
     return env
 
 
-def run_review(
-    aeve_request: dict,
+def _prepare_state_dir(state_dir: pathlib.Path) -> None:
+    try:
+        state_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise AdapterBlocked("STATE_DIR_UNUSABLE", type(exc).__name__) from exc
+
+
+def run_aeve_command(
+    command: str,
+    args: Sequence[str] | Callable[[pathlib.Path], Sequence[str]],
     *,
     aeve_root: pathlib.Path,
     state_dir: pathlib.Path,
@@ -138,21 +155,27 @@ def run_review(
     command_prefix: list[str] | None = None,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     stdout_cap: int = DEFAULT_STDOUT_CAP,
-    require_clean_tree: bool = False,
-) -> dict:
-    """Run one review and return the validated AEVE response, or raise AdapterBlocked."""
+    ok_exit_codes: Sequence[int] | None = None,
+) -> tuple[int, bytes]:
+    """Run ``aeve <command> <args>`` in the isolated child and return ``(exit_code, raw stdout bytes)``.
+
+    ``args`` is a list, or a callable that receives the private temporary directory (neutral working directory of
+    the child) and returns the list; it may write input files there. ``ok_exit_codes`` defaults to the per-command
+    table ``OK_EXIT_CODES_BY_COMMAND``; an unknown command with no explicit codes is refused. Raises AdapterBlocked:
+    STATE_DIR_UNUSABLE, EXEC_FAILED, TIMEOUT (``tree_dead`` says whether the child is confirmed gone), OUTPUT_TOO_LARGE,
+    AEVE_EXIT. The output is not parsed here.
+    """
+    if ok_exit_codes is None:
+        ok_exit_codes = OK_EXIT_CODES_BY_COMMAND.get(command)
+        if ok_exit_codes is None:
+            raise AdapterBlocked("UNKNOWN_COMMAND", command[:40])
     aeve_root = aeve_root.resolve()
-    try:
-        state_dir.mkdir(parents=True, exist_ok=True)
-    except OSError as exc:
-        raise AdapterBlocked("STATE_DIR_UNUSABLE", type(exc).__name__) from exc
-    if require_clean_tree and aeve_request.get("allow_dirty"):
-        raise AdapterBlocked("DIRTY_NOT_ALLOWED_FOR_RECEIPT", "allow_dirty must be false for a receipt request")
+    _prepare_state_dir(state_dir)
     prefix = command_prefix or [python or sys.executable, "-P", "-s", "-B", "-m", "aeve"]
-    with tempfile.TemporaryDirectory(prefix="uc-review-", ignore_cleanup_errors=True) as private:
-        request_path = pathlib.Path(private) / "request.json"
-        request_path.write_text(json.dumps(aeve_request, sort_keys=True), encoding="utf-8")
-        argv = [*prefix, "review", "--request", str(request_path)]
+    with tempfile.TemporaryDirectory(prefix=f"uc-{command}-", ignore_cleanup_errors=True) as private:
+        private_dir = pathlib.Path(private)
+        extra = list(args(private_dir)) if callable(args) else list(args)
+        argv = [*prefix, command, *extra]
         try:
             preexec = os.setpgrp if os.name != "nt" else None
             process = subprocess.Popen(
@@ -186,18 +209,48 @@ def run_review(
             process.wait(timeout=15)
         except subprocess.TimeoutExpired:
             _kill_tree(process)
+        tree_dead = process.poll() is not None
         for thread in threads:
             thread.join(timeout=5)
     if timed_out:
-        raise AdapterBlocked("TIMEOUT", f"exceeded {timeout}s; process tree terminated")
+        blocked = AdapterBlocked("TIMEOUT", f"exceeded {timeout}s; process tree terminated")
+        blocked.tree_dead = tree_dead
+        raise blocked
     if flags.get("stdout"):
         raise AdapterBlocked("OUTPUT_TOO_LARGE", f"stdout exceeded {stdout_cap} bytes")
     if flags.get("stderr"):
         raise AdapterBlocked("OUTPUT_TOO_LARGE", f"stderr exceeded {STDERR_CAP} bytes")
     exit_code = process.returncode
-    if exit_code not in OK_EXIT_CODES:
+    if exit_code not in ok_exit_codes:
         raise AdapterBlocked("AEVE_EXIT", f"exit {exit_code}")
-    raw = b"".join(out_chunks)
+    return exit_code, b"".join(out_chunks)
+
+
+def run_review(
+    aeve_request: dict,
+    *,
+    aeve_root: pathlib.Path,
+    state_dir: pathlib.Path,
+    python: str | None = None,
+    command_prefix: list[str] | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    stdout_cap: int = DEFAULT_STDOUT_CAP,
+    require_clean_tree: bool = False,
+) -> dict:
+    """Run one review and return the validated AEVE response, or raise AdapterBlocked."""
+    _prepare_state_dir(state_dir)
+    if require_clean_tree and aeve_request.get("allow_dirty"):
+        raise AdapterBlocked("DIRTY_NOT_ALLOWED_FOR_RECEIPT", "allow_dirty must be false for a receipt request")
+
+    def review_args(private: pathlib.Path) -> list[str]:
+        request_path = private / "request.json"
+        request_path.write_text(json.dumps(aeve_request, sort_keys=True), encoding="utf-8")
+        return ["--request", str(request_path)]
+
+    exit_code, raw = run_aeve_command(
+        "review", review_args, aeve_root=aeve_root, state_dir=state_dir, python=python,
+        command_prefix=command_prefix, timeout=timeout, stdout_cap=stdout_cap, ok_exit_codes=OK_EXIT_CODES,
+    )
     if b"\x00" in raw:
         raise AdapterBlocked("BAD_OUTPUT", "NUL byte in output")
     try:

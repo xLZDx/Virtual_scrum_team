@@ -3,8 +3,8 @@
 Two modes are declared in `catalog/link_mode.json` (schema `vst.link_mode.v1`):
 
 - `gates`: VST owns the gates, receipts and the review loop (the U1-U6 scheme). Available.
-- `router`: AEVE does the checks and VST only routes AEVE reports. Declared but NOT available: it needs AEVE
-  S20-T07 (task packet) and S20-T08 (handoff verifier). It refuses to be selected and no router behaviour exists.
+- `router`: AEVE builds the task packet and verifies the handoff and VST only routes them (docs/sdlc/LINK2_ROUTER_DESIGN.md,
+  tools/vst/router_mode.py). Available since LINK-2; `gates` stays the default and nothing selects router by itself.
 
 Fail closed: a missing, unreadable, malformed or inconsistent file, a duplicate JSON key, an unknown key, a wrong
 type, an unknown mode name, or a current mode that is not a known AVAILABLE mode raises `LinkModeError` with a
@@ -13,7 +13,8 @@ atomically (temp file in the same directory, then `os.replace`, with a small bou
 PermissionError winerror 5/32). Two concurrent `set_mode` calls are last-writer-wins; each write is whole.
 
 The availability of `router` is pinned in CODE (`ROUTER_CAPABILITY_READY`), not in the data file: while it is False,
-`load` rejects a file that marks router available, and `set_mode` refuses router before it reads the file's flag.
+`load` rejects a file that marks router available and `set_mode` refuses router before it reads the file's flag; while it
+is True, `load` rejects a file that still marks router blocked (a half-reverted flip fails closed).
 Strings that cannot be encoded as UTF-8 (lone surrogates) and a UTF-8 BOM are rejected. A symlink or junction at the
 catalog path is followed on read (acceptable: the CLI path is a repo constant).
 
@@ -44,11 +45,9 @@ CATALOG_UNREADABLE = "CATALOG_UNREADABLE"
 CATALOG_INVALID = "CATALOG_INVALID"
 WRITE_FAILED = "WRITE_FAILED"
 
-# Flips to True only together with the reviewed router implementation (AEVE S20-T07 and S20-T08 in place).
-# Never derive it from the data file.
-ROUTER_CAPABILITY_READY = False
-ROUTER_BLOCKED_REASON = "ROUTER_REQUIRES_AEVE_TASK_PACKET_AND_HANDOFF_VERIFIER"
-ROUTER_REQUIRES = ("AEVE S20-T07", "AEVE S20-T08")
+# True since LINK2-T6, the last implementation commit of sprint LINK-2 (router_mode, router_aeve_cli, router_request, the
+# driver stage and the package section are in place). Never derive it from the data file.
+ROUTER_CAPABILITY_READY = True
 
 _TOP_KEYS = frozenset({"schema", "mode", "modes"})
 _AVAILABLE_KEYS = frozenset({"available", "description"})
@@ -146,8 +145,6 @@ def _parse_entry(name: str, raw: object) -> ModeEntry:
     if (not isinstance(requires, list) or not requires or not all(_text(item) for item in requires)
             or len(set(requires)) != len(requires)):
         raise _invalid(f"mode {name}: requires must be a non-empty list of distinct strings")
-    if name == MODE_ROUTER and (raw["blocked_reason"] != ROUTER_BLOCKED_REASON or tuple(requires) != ROUTER_REQUIRES):
-        raise _invalid("mode router: blocked_reason and requires must match the pinned values")
     return ModeEntry(name, False, raw["description"], raw["blocked_reason"], tuple(requires))
 
 
@@ -170,6 +167,8 @@ def _parse(text: str) -> LinkModeConfig:
         raise _invalid("mode gates must be available")
     if entries[1].available and not ROUTER_CAPABILITY_READY:
         raise _invalid("mode router cannot be available: the router capability is not ready in code")
+    if ROUTER_CAPABILITY_READY and not entries[1].available:
+        raise _invalid("mode router must be available: the router capability is ready in code")
     config = LinkModeConfig(mode, entries)
     current = config.entry(mode)
     if current is None:
@@ -213,6 +212,9 @@ def _replace_with_retry(source: str, target: Path) -> None:
             time.sleep(_RETRY_DELAY_SECONDS)
 
 
+replace_with_retry = _replace_with_retry  # public export for the router work files (LINK2-T5), same behaviour
+
+
 def _write_atomic(path: Path, data: bytes) -> None:
     handle, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
     try:
@@ -236,7 +238,7 @@ def set_mode(path: str | os.PathLike, new_mode: str) -> ResolvedMode:
     WRITE_FAILED and leaves the old file in place.
     """
     if new_mode == MODE_ROUTER and not ROUTER_CAPABILITY_READY:
-        raise LinkModeError(MODE_UNAVAILABLE, ROUTER_BLOCKED_REASON)
+        raise LinkModeError(MODE_UNAVAILABLE, "ROUTER_CAPABILITY_NOT_READY")
     config = load(path)
     if not isinstance(new_mode, str) or config.entry(new_mode) is None:
         raise LinkModeError(UNKNOWN_MODE, f"known modes: {', '.join(KNOWN_MODES)}")

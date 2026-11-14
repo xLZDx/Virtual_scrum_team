@@ -503,9 +503,8 @@ def test_main_matrix_failure_exits_2(cli, capsys, monkeypatch):
 
 
 # ------------------------------------------------------------------ CLI as a real subprocess against the real AEVE
-REAL_AEVE = pathlib.Path("D:/Repo/AEVE")
-_needs_aeve = pytest.mark.skipif(not (REAL_AEVE / "src" / "aeve" / "__main__.py").is_file(),
-                                 reason="real AEVE checkout D:/Repo/AEVE not present")
+REAL_AEVE = S.real_aeve_root()  # env AEVE_PIN_CHECKOUT, else D:/Repo/AEVE
+_needs_aeve = pytest.mark.skipif(bool(S.real_aeve_skip_reason()), reason=S.real_aeve_skip_reason() or "real AEVE at the pin")
 
 
 def _cli(*args):

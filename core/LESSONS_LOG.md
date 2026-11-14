@@ -2563,3 +2563,88 @@ First send used an unregistered scratch worktree path as --cwd (no project bindi
 ## 2026-11-12 SUCCESS LINK-1 approved in round 1
 
 Both MAJOR defects were removed before the round by the reviewer pass and one remediation batch; GPT-PM found only a stale sentence in the docs. Rule: run the language-level reviewer before GPT-PM so the paid round only sees residual issues.
+
+## 2026-11-14 SUCCESS LINK-2 design reviewed by two role reviewers before any code
+
+The first design draft had 12 MAJOR defects (false claim about verdict names, adapter hard-wired to review, no claim lock, unbound result file, flip order contradicting the approval binding), caught by reading, not by running anything. Rule: review a design against the real code before implementing; a writer who cannot read every file must mark those facts as unverified.
+
+## 2026-11-14 SHORTCOMING LINK2-T1 a pin bump silently changed four role classes
+
+Rebuilding the role table at the new AEVE head moved four skills from OUT_OF_SCOPE to LOCAL_PLUS_MODEL, which broke tests that used one of them as the out-of-scope example; the design only named the head and digest tests. Layer: caught by diffing the rebuilt table, not by a run. Rule: after a pin rebuild, diff every table entry and grep tests for names whose class changed.
+
+## 2026-11-14 SUCCESS LINK2-T2 guard checks reject Python bool-as-int
+
+In Python False == 0, so a guard written as llm_calls == 0 would accept false from a foreign producer. The validator tests the exact type for the integer guard and uses is-False for the boolean guards. Rule: when a contract says integer 0 or boolean false, compare by identity or exact type, never by equality.
+
+## 2026-11-14 SUCCESS LINK2-T3A extraction kept the old caller first
+
+The generic runner was cut out of run_review by moving the body unchanged and adding only the argument hook, the exit table and the tree_dead flag, so the existing adapter tests keep their argv, order of checks and reason codes. Rule: extract by moving code and parametrising, then change behaviour in a separate step.
+
+## 2026-11-14 SHORTCOMING LINK2-T3 AEVE input caps are smaller than the VST caps
+
+AEVE reads packet and result files only up to 64 KiB, while the design caps VST packets and results at 1 MiB; a file between the two would come back as an AEVE INVALID answer, not a VST size refusal. Layer: found by reading the AEVE cli while writing the wrapper, not by a run. Rule: when two sides both cap an input, record the smaller cap in the design and test the gap.
+
+## 2026-11-14 — LINK2-T5 a stale-lock takeover can rename a fresh claim
+
+- Kind: SHORTCOMING (the first sketch renamed the old claim file without checking what was renamed).
+- Facts: two takers that both read the same stale claim can race, so the second rename would move the first taker's fresh claim away. The code re-reads the renamed file, compares it with what was judged stale, and links it back when it differs; a rare residual window remains and is listed in the report. Nothing was run (operator ban); found by hand-tracing two interleavings.
+- Rule: after an atomic rename of a lock judged stale, verify the content of what was moved before trusting the takeover, and trace two takers by hand.
+
+## 2026-11-14 — LINK2-T4A a design that names a check can name one the module cannot do
+
+- Kind: SHORTCOMING (revision 2 said final_package recomputes the result digest, but the builder holds no result bytes and does no file IO).
+- Facts: reading build_final_package and _build showed no input for the result file and no pin parameter, and the driver had no story role to decide when the router stage runs. The pinned section now adds a caller-supplied recomputed digest, a pin parameter and CLI arguments. Nothing was run (operator ban).
+- Rule: before pinning a check to a module, read what inputs that module receives; if the evidence is not an input, move the hashing to the caller and pass the result in.
+
+## 2026-11-14 — LINK2-T4B optional parameters keep every old package byte for byte
+
+- Kind: SUCCESS (the router section adds its keys only when a row is supplied, so a gates run builds the same bytes as before).
+- Facts: build_final_package gained three keyword parameters with defaults, and _build adds the router key and its digest only for a given row; the driver stage is skipped in gates mode and records one skipped note in the evidence. Nothing was run (operator ban); checked by reading the package dict construction.
+- Rule: when extending a hashed document, add keys conditionally and show by reading that the default path never touches them.
+
+## 2026-11-14 — LINK2-T6 the flip needs a rule for both half-states
+
+- Kind: SUCCESS (the code constant, the catalog entry and the load rules flip in one commit, and load now rejects both a router marked available while the constant is False and a router still blocked while it is True).
+- Facts: with the pinned blocked_reason and requires removed, the only guard against a half-reverted flip is the new load rule; the old tests that hard-code the blocked router (tests/vst/test_link_mode.py) were listed for the test author and not edited. Nothing was run (operator ban); the shipped catalog was loaded once as an import-level smoke and printed gates available and router available.
+- Rule: when a switch flips a capability, make every mixed state of constant and data file fail closed and name the old tests that now contradict it.
+
+## 2026-11-14 — LINK2-TEST regex dollar and unsigned state file found by tests, not by review
+
+- Kind: SHORTCOMING (three product defects reached the tests: a task id pattern ending in a bare dollar accepts a trailing line feed, a recorded verdict in state.json is adopted without comparing it with report.json, and a torn result copy blocks the story even after the host fixes the file).
+- Facts: final_package.py already uses the end-of-string anchor for the same job, router_request.py does not; the design said "adopt only if every digest matches" but the outcome field had no digest check; the timing assertion that exactly two calls overlap was flaky under load and was relaxed to a bound.
+- Rule: validate identifiers with a full-match anchor, derive an adopted verdict from the digested file instead of trusting a sibling field, and assert concurrency caps as upper bounds with an ordering check.
+
+## 2026-11-14 — LINK2-FIX defects fixed from the failing tests
+
+- Kind: SUCCESS (the three defects the functional tests left failing were fixed in production code only, from the test expectations).
+- Rule: when a recovery state is re-entered, re-read the external input instead of trusting the recorded copy, and keep the recorded digest as the only skip condition.
+
+## 2026-11-14 — LINK2-TEST real-AEVE tests no longer depend on a moving live checkout
+
+- Kind: SHORTCOMING (two tests hard-coded the live AEVE path D:/Repo/AEVE, so they failed as soon as that checkout moved to another head).
+- Rule: a test that needs an external repository takes its path from an environment variable and skips with a reason when the checkout is not at the committed pin head; never read a live working checkout as a fixture.
+
+## 2026-11-14 — LINK2-FIX2 file claims with age takeover were not a safe lock
+
+- Kind: FAILURE (three reviewers independently showed that the rename-and-restore stale-claim takeover lets two of three contenders hold the lock, that no heartbeat covered a run longer than the stale age, and that on Windows a delete-pending path raises PermissionError instead of FileExistsError).
+- Rule: use an OS lock held for the process lifetime for mutual exclusion (the OS releases it on a crash); never build a lock from an age rule plus rename, and derive any timeout from the computed worst-case run time.
+
+## 2026-11-14 — LINK2-TEST lock tests must hold a real OS lock from a second process
+
+- Kind: SUCCESS (the lock, crash and sweep behaviour is proved with a separate process that holds byte 0 and is killed, not with planted files, so a return to age-based claims turns the tests red).
+- Rule: test an OS-lock contract with a real second process and a kill, and write the lock helper straight against msvcrt/fcntl instead of the code under test.
+
+## 2026-11-14 — LINK2 scope note states NOT_RUN and known limits before the GPT-PM round
+
+- Kind: SUCCESS (the note lists the unrun POSIX lock branch, the 64 KiB versus 1 MiB cap gap and the backlog up front, so the paid round starts from an honest evidence list).
+- Rule: write the scope note with per-file test counts and the NOT_RUN list before sending the GPT-PM review, and send the review from the registered project folder with PM Bridge health checked first.
+
+## 2026-11-15 — Cleanup checked the lock and then deleted without holding it
+
+- Kind: SHORTCOMING (release_work_dir and sweep probed the claim and deleted afterwards; our own tests and reviewers passed it, GPT-PM round 1 caught the check-then-act gap).
+- Rule: a cleanup that deletes under an OS lock must take that same lock itself and hold it until the deletion ended; a probe-then-delete is never enough, and a lock file inside the deleted directory is removed last, after the handle is released on Windows.
+
+## 2026-11-15 — A race test needs a wide window, not a lucky one
+
+- Kind: SUCCESS (slowing only the cleaning thread's unlink made the deletion window about 1 s, so the arriving caller is inside it deterministically).
+- Rule: to test a lock held during deletion, widen the window from the test side (a patched unlink limited to the releasing thread) and assert the outcomes the contract allows, never timing.

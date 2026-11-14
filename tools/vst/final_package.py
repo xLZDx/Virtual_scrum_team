@@ -91,6 +91,8 @@ INTERNAL_ERROR = "INTERNAL_ERROR"
 # verify_package_current codes
 HEAD_CHANGED = "HEAD_CHANGED"
 DIFF_CHANGED = "DIFF_CHANGED"
+ROUTER_NOT_VERIFIED = "ROUTER_NOT_VERIFIED"  # LINK2-T4b: router mode needs a VERIFIED router row
+ROUTER_RESULT_DIGEST_MISMATCH = "ROUTER_RESULT_DIGEST_MISMATCH"
 PACKAGE_MALFORMED = "PACKAGE_MALFORMED"
 PACKAGE_INCONSISTENT = "PACKAGE_INCONSISTENT"
 PACKAGE_TAMPERED = "PACKAGE_TAMPERED"
@@ -450,6 +452,60 @@ def _review_section(raw: Any, story_id: str, head: str, replay_verified: bool, p
     }
 
 
+_ROUTER_OUTCOMES = ("ROUTED_VERIFIED", "ROUTED_REJECTED", "ROUTED_UNKNOWN", "ROUTER_INVALID_INPUT")
+_ROUTER_REQUIRED_KEYS = {"outcome", "status", "task_id", "request_sha256", "packet_sha256", "result_sha256",
+                         "report_sha256", "pin_head", "result_sha256_recomputed"}
+
+
+def _router_section(raw: Any, required: bool, expected_pin: Any, refusals: list, story_id: str) -> dict | None:
+    """LINK2-T4b: the router row (tools/vst/router_mode.report_for_package) as a package section, or None.
+
+    `required` demands that a row exists. Whenever a row is supplied (required or not) it must carry outcome
+    ROUTED_VERIFIED and status VERIFIED and name `story_id` as its task_id, else ROUTER_NOT_VERIFIED; with `required` it
+    must also name the expected pin. Any row whose recomputed result digest differs from the recorded one is refused with
+    ROUTER_RESULT_DIGEST_MISMATCH. UNKNOWN, REJECTED and INVALID are never accepted. No row: the package is unchanged."""
+    if raw is None:
+        if required:
+            _add(refusals, ROUTER_NOT_VERIFIED, "router mode is required but no router row was supplied")
+        return None
+    row = _mapping(raw, "router_report", _ROUTER_REQUIRED_KEYS, {"aeve_request_sha256"})
+    if row["outcome"] not in _ROUTER_OUTCOMES:
+        _bad(BAD_INPUT, "router_report.outcome is not a known router outcome")
+    section = {
+        "outcome": row["outcome"], "status": _text(row["status"], "router_report.status", limit=40),
+        "task_id": _text(row["task_id"], "router_report.task_id", limit=64),
+        "request_sha256": _hex(row["request_sha256"], "router_report.request_sha256", _SHA256),
+        "packet_sha256": _hex(row["packet_sha256"], "router_report.packet_sha256", _SHA256),
+        "result_sha256": _hex(row["result_sha256"], "router_report.result_sha256", _SHA256),
+        "report_sha256": _hex(row["report_sha256"], "router_report.report_sha256", _SHA256),
+        "pin_head": _hex(row["pin_head"], "router_report.pin_head", _HEX40),
+        "result_sha256_recomputed": _hex(row["result_sha256_recomputed"], "router_report.result_sha256_recomputed", _SHA256),
+        "aeve_request_sha256": _hex(row.get("aeve_request_sha256"), "router_report.aeve_request_sha256", _SHA256,
+                                    optional=True),
+    }
+    if section["outcome"] != "ROUTED_VERIFIED" or section["status"] != "VERIFIED":
+        _add(refusals, ROUTER_NOT_VERIFIED, f"router outcome is {section['outcome']} (status {section['status']}); "
+             "only ROUTED_VERIFIED with status VERIFIED is accepted")
+    elif required:
+        pin = expected_pin
+        if pin is None:
+            from .router_aeve_cli import load_pin_head  # lazy: only router mode needs the pin file
+            from .router_request import RouterError
+            try:
+                pin = load_pin_head()
+            except RouterError as exc:
+                raise _Bad(BAD_INPUT, f"expected router pin unavailable: {exc.reason}") from exc
+        if pin is not None:
+            _hex(pin, "router_pin_head", _HEX40)
+        if section["pin_head"] != pin:
+            _add(refusals, ROUTER_NOT_VERIFIED, "router row names an AEVE pin head that is not the expected pin")
+    if section["task_id"] != story_id:
+        _add(refusals, ROUTER_NOT_VERIFIED, "router row belongs to another story than the package story_id")
+    if section["result_sha256_recomputed"] != section["result_sha256"]:
+        _add(refusals, ROUTER_RESULT_DIGEST_MISMATCH, "the result copy hashes differently now than when it was verified")
+    return section
+
+
 def _receipts_section(raw: Any, head: str, refusals: list) -> list[dict]:
     items = _seq(raw, "receipts", MAX_RECEIPTS)
     out: list[dict] = []
@@ -619,7 +675,8 @@ def build_final_package(
     receipts: Sequence[Mapping[str, Any]], isolation_proof: Mapping[str, Any],
     patch_origin_share: Mapping[str, Any] | None, now: str,
     allow_not_run: Mapping[str, str] | None = None, declared_limits: Sequence[str] = (),
-    replay_store_verified: bool = False,
+    replay_store_verified: bool = False, router_required: bool = False,
+    router_report: Mapping[str, Any] | None = None, router_pin_head: str | None = None,
 ) -> PackageResult:
     """Build the final package bound to `head`, or refuse. Never raises for input problems; never mutates inputs.
 
@@ -634,11 +691,16 @@ def build_final_package(
     None. `allow_not_run` maps a NOT_RUN or SKIPPED required test id to the operator-visible reason it may stay
     unrun. `declared_limits` are copied verbatim. `replay_store_verified` must be True for a review result that
     was replayed from the store. `now` is an RFC 3339 UTC timestamp ending in 'Z', recorded as created_at.
+    Router mode (LINK2-T4b): `router_required` True demands `router_report`, the row from
+    `router_mode.report_for_package`, with outcome ROUTED_VERIFIED and status VERIFIED at `router_pin_head` (None: the
+    pinned head of catalog/role_table.json), else REFUSED with ROUTER_NOT_VERIFIED. With the defaults and no row the
+    package is byte-identical to one built before router mode existed.
     """
     try:
         return _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, test_evidence,
                       required_test_ids, review_results, receipts, isolation_proof, patch_origin_share, now,
-                      allow_not_run, declared_limits, replay_store_verified)
+                      allow_not_run, declared_limits, replay_store_verified, router_required, router_report,
+                      router_pin_head)
     except _Bad as exc:
         return PackageResult(BLOCKED, ((exc.code, exc.detail),), None, None)
     except Exception as exc:  # noqa: BLE001 - fail closed on anything unexpected (also RecursionError)
@@ -647,9 +709,11 @@ def build_final_package(
 
 def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, test_evidence, required_test_ids,
            review_results, receipts, isolation_proof, patch_origin_share, now, allow_not_run, declared_limits,
-           replay_store_verified):
+           replay_store_verified, router_required=False, router_report=None, router_pin_head=None):
     if type(replay_store_verified) is not bool:
         _bad(BAD_INPUT, "replay_store_verified must be a bool")
+    if type(router_required) is not bool:
+        _bad(BAD_INPUT, "router_required must be a bool")
     try:  # private copies: nothing below can touch a caller object
         test_evidence = copy.deepcopy(test_evidence)
         required_test_ids = copy.deepcopy(required_test_ids)
@@ -660,6 +724,7 @@ def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, te
         allow_not_run = copy.deepcopy({} if allow_not_run is None else allow_not_run)
         declared_limits = copy.deepcopy(declared_limits)
         changed_paths = copy.deepcopy(changed_paths)
+        router_report = copy.deepcopy(router_report)
         diff_bytes = bytes(diff_bytes) if isinstance(diff_bytes, (bytes, bytearray)) else diff_bytes
     except RecursionError as exc:
         raise _Bad(BAD_INPUT, "input is nested too deeply") from exc
@@ -693,6 +758,7 @@ def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, te
     diff["changed_paths_sha256"] = paths_digest
     tests, not_run = _tests_section(test_evidence, allow_not_run, required_test_ids, head, refusals)
     review = _review_section(review_results, story_id, head, replay_store_verified, paths_digest, refusals)
+    router_row = _router_section(router_report, router_required, router_pin_head, refusals, story_id)
     receipt_rows = _receipts_section(receipts, head, refusals)
     isolation = _isolation_section(isolation_proof, head, refusals)
     share = _share_section(patch_origin_share, head, diff_sha256, refusals)
@@ -716,6 +782,9 @@ def _build(story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, te
         "declared_limits": limits,
         "derived_limits": _derived_limits(tests, not_run, review, isolation, receipt_rows, share),
     }
+    if router_row is not None:  # only a router run adds keys, so every other package keeps its bytes
+        package["router"] = router_row
+        package["evidence_digests"]["router_report_sha256"] = _digest_of(router_row)
     try:
         blob = canonical_bytes(package)
     except ContractError as exc:
