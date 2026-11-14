@@ -2579,3 +2579,7 @@ In Python False == 0, so a guard written as llm_calls == 0 would accept false fr
 ## 2026-11-14 SUCCESS LINK2-T3A extraction kept the old caller first
 
 The generic runner was cut out of run_review by moving the body unchanged and adding only the argument hook, the exit table and the tree_dead flag, so the existing adapter tests keep their argv, order of checks and reason codes. Rule: extract by moving code and parametrising, then change behaviour in a separate step.
+
+## 2026-11-14 SHORTCOMING LINK2-T3 AEVE input caps are smaller than the VST caps
+
+AEVE reads packet and result files only up to 64 KiB, while the design caps VST packets and results at 1 MiB; a file between the two would come back as an AEVE INVALID answer, not a VST size refusal. Layer: found by reading the AEVE cli while writing the wrapper, not by a run. Rule: when two sides both cap an input, record the smaller cap in the design and test the gap.

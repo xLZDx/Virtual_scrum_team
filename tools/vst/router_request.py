@@ -52,6 +52,9 @@ ROUTER_BAD_OUTPUT = "ROUTER_BAD_OUTPUT"
 class RouterError(Exception):
     """A router step failed closed; ``reason`` is a stable ROUTER_* code and the story is BLOCKED."""
 
+    retry_count = 0  # AEVE timeout retries already spent when the step failed (router_aeve_cli sets it)
+    tree_dead: bool | None = None  # ROUTER_TIMEOUT only: the child process tree is confirmed gone
+
     def __init__(self, reason: str, detail: str = "") -> None:
         super().__init__(f"{reason}: {detail}" if detail else reason)
         self.reason = reason

@@ -111,6 +111,12 @@ def checkout_is_clean(aeve_root: pathlib.Path, *, timeout: float = DEFAULT_TIMEO
     return not _checkout_state(aeve_root, build_child_env(aeve_root), timeout)
 
 
+def checkout_head(aeve_root: pathlib.Path, *, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> str:
+    """The full git HEAD of the AEVE checkout; raises AeveProbeError when git cannot answer."""
+    aeve_root = aeve_root.resolve()
+    return _git(aeve_root, ["rev-parse", "HEAD"], build_child_env(aeve_root), timeout).strip()
+
+
 def canonical_digest(value: object) -> str:
     payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
