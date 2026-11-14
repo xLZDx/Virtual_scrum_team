@@ -2601,3 +2601,9 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 - Kind: SUCCESS (the router section adds its keys only when a row is supplied, so a gates run builds the same bytes as before).
 - Facts: build_final_package gained three keyword parameters with defaults, and _build adds the router key and its digest only for a given row; the driver stage is skipped in gates mode and records one skipped note in the evidence. Nothing was run (operator ban); checked by reading the package dict construction.
 - Rule: when extending a hashed document, add keys conditionally and show by reading that the default path never touches them.
+
+## 2026-11-14 — LINK2-T6 the flip needs a rule for both half-states
+
+- Kind: SUCCESS (the code constant, the catalog entry and the load rules flip in one commit, and load now rejects both a router marked available while the constant is False and a router still blocked while it is True).
+- Facts: with the pinned blocked_reason and requires removed, the only guard against a half-reverted flip is the new load rule; the old tests that hard-code the blocked router (tests/vst/test_link_mode.py) were listed for the test author and not edited. Nothing was run (operator ban); the shipped catalog was loaded once as an import-level smoke and printed gates available and router available.
+- Rule: when a switch flips a capability, make every mixed state of constant and data file fail closed and name the old tests that now contradict it.

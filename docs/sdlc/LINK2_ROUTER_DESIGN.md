@@ -1,8 +1,8 @@
 # LINK-2 design: router mode (VST routes AEVE task packets and handoff reports)
 
 Status: design for sprint LINK-2, revision 2 (after architect and reliability review), written before
-implementation. Nothing here is implemented. Until the reviewed implementation lands, `ROUTER_CAPABILITY_READY` stays
-`False` (`tools/vst/link_mode.py` line 49).
+implementation; T1 to T6 are implemented on branch `link2-router-design` and tests are NOT_RUN. `ROUTER_CAPABILITY_READY`
+was flipped to `True` by LINK2-T6, the last implementation commit (`docs/sdlc/LINK_MODE.md` describes the result).
 
 ## 1. Goal and non-goals
 
