@@ -2607,3 +2607,9 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 - Kind: SUCCESS (the code constant, the catalog entry and the load rules flip in one commit, and load now rejects both a router marked available while the constant is False and a router still blocked while it is True).
 - Facts: with the pinned blocked_reason and requires removed, the only guard against a half-reverted flip is the new load rule; the old tests that hard-code the blocked router (tests/vst/test_link_mode.py) were listed for the test author and not edited. Nothing was run (operator ban); the shipped catalog was loaded once as an import-level smoke and printed gates available and router available.
 - Rule: when a switch flips a capability, make every mixed state of constant and data file fail closed and name the old tests that now contradict it.
+
+## 2026-11-14 — LINK2-TEST regex dollar and unsigned state file found by tests, not by review
+
+- Kind: SHORTCOMING (three product defects reached the tests: a task id pattern ending in a bare dollar accepts a trailing line feed, a recorded verdict in state.json is adopted without comparing it with report.json, and a torn result copy blocks the story even after the host fixes the file).
+- Facts: final_package.py already uses the end-of-string anchor for the same job, router_request.py does not; the design said "adopt only if every digest matches" but the outcome field had no digest check; the timing assertion that exactly two calls overlap was flaky under load and was relaxed to a bound.
+- Rule: validate identifiers with a full-match anchor, derive an adopted verdict from the digested file instead of trusting a sibling field, and assert concurrency caps as upper bounds with an ordering check.

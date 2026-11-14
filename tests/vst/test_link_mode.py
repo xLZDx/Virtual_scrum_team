@@ -1,23 +1,21 @@
 """Link mode switch (`tools/vst/link_mode.py`, catalog `catalog/link_mode.json`).
 
-Written from the acceptance criteria, NOT_RUN (operator ban on running tests in this task):
+Written from the acceptance criteria of docs/sdlc/LINK2_ROUTER_DESIGN.md (AC-33 to AC-36) and of LINK_MODE.md.
+State after sprint LINK-2 task T6: the code constant `ROUTER_CAPABILITY_READY` is True, the shipped catalog marks
+`router` available and keeps `mode` at `gates`.
 
-1. the default catalog loads and resolves to mode `gates`, available true;
-2. `router` is declared but unavailable and pinned in code: `set_mode(path, "router")` raises MODE_UNAVAILABLE
-   (before the file is even read) and the file bytes do not change; an unknown mode raises UNKNOWN_MODE;
-3. `set_mode` to the mode that is already current does not rewrite the file;
+1. the default catalog loads and resolves to mode `gates`, available true; `router` is available (AC-36);
+2. `set_mode(path, "router")` succeeds on a catalog copy, rewrites the file with `mode` router and `get` then reports
+   router available (AC-33); `set_mode(path, "gates")` switches back; an unknown mode raises UNKNOWN_MODE;
+3. while the code constant is False (patched here) `set_mode(..., "router")` raises MODE_UNAVAILABLE with detail
+   ROUTER_CAPABILITY_NOT_READY before the file is read, and the file bytes do not change;
 4. `load` rejects a bad file with CATALOG_INVALID (content problems) or CATALOG_UNREADABLE (cannot be read),
-   including a catalog that marks `router` available, an altered pinned router entry, an unavailable `gates`,
-   lone surrogates and a UTF-8 BOM;
+   including: READY True with a blocked router entry (AC-34, a half-reverted flip), READY False with an available
+   router (AC-35), an unavailable `gates`, lone surrogates and a UTF-8 BOM;
 5. CLI `main`: exit 0 ok, 1 refusal, 2 usage, 3 internal error; the output is exactly one ASCII JSON line;
 6. the write is atomic (`_write_atomic`, `_replace_with_retry`): a brief PermissionError (winerror 5 or 32) is
-   retried, a permanent failure keeps the old bytes and leaves no temp file.
-
-The shipped catalog can never reach the write path through the public API (router is pinned unavailable and gates
-is already current), so criterion 6 calls the private writers directly. `WriteFailedMappingTest` is the only place
-that reaches `set_mode`'s write branch: it flips the code constant `ROUTER_CAPABILITY_READY` with `mock.patch`
-(the documented future switch), to prove that a failed write becomes WRITE_FAILED. Drop that class if patching the
-constant is not wanted.
+   retried, a permanent failure keeps the old bytes and leaves no temp file;
+7. `set_mode` turns a failed write into WRITE_FAILED and keeps the old file.
 
 Fixtures are copies of the real catalog in a temp directory. The repo catalog file is only ever read.
 """
@@ -46,10 +44,31 @@ def base_doc() -> dict:
     return json.loads(REAL_CATALOG.read_bytes().decode("utf-8"))
 
 
+# The router entry of the catalog before LINK2-T6 (written out here, not read from the code under test).
+OLD_BLOCKED_ROUTER = {
+    "available": False,
+    "description": "router mode is declared but blocked",
+    "blocked_reason": "ROUTER_REQUIRES_AEVE_TASK_PACKET_AND_HANDOFF_VERIFIER",
+    "requires": ["AEVE S20-T07", "AEVE S20-T08"],
+}
+
+
+def router_blocked_doc() -> dict:
+    """A catalog whose router entry is still blocked (the state before the flip, or a half-reverted flip)."""
+    doc = base_doc()
+    doc["modes"]["router"] = dict(OLD_BLOCKED_ROUTER, requires=list(OLD_BLOCKED_ROUTER["requires"]))
+    return doc
+
+
 def router_available_doc() -> dict:
     doc = base_doc()
-    doc["modes"]["router"] = {"available": True, "description": "hypothetical available router"}
+    doc["modes"]["router"] = {"available": True, "description": "an available router"}
     return doc
+
+
+def not_ready():
+    """Patch the code constant to False (the state before LINK2-T6 and the state of a reverted flip)."""
+    return mock.patch.object(lm, "ROUTER_CAPABILITY_READY", False)
 
 
 def make_permission_error(winerror: int) -> PermissionError:
@@ -95,7 +114,19 @@ class DefaultCatalogTest(unittest.TestCase):
         config = lm.load(REAL_CATALOG)
         self.assertEqual(config.mode, "gates")
         self.assertTrue(config.entry("gates").available)
-        self.assertFalse(config.entry("router").available)
+        self.assertTrue(config.entry("router").available)
+
+    def test_code_constant_is_flipped_and_the_old_blocked_constants_are_gone(self):
+        self.assertIs(lm.ROUTER_CAPABILITY_READY, True)
+        self.assertFalse(hasattr(lm, "ROUTER_BLOCKED_REASON"))
+        self.assertFalse(hasattr(lm, "ROUTER_REQUIRES"))
+
+    def test_default_mode_stays_gates_although_router_is_available(self):  # AC-36
+        raw = json.loads(REAL_CATALOG.read_bytes().decode("utf-8"))
+        self.assertEqual(raw["mode"], "gates")
+        self.assertIs(raw["modes"]["router"]["available"], True)
+        self.assertEqual(set(raw["modes"]["router"]), {"available", "description"})
+        self.assertEqual(lm.resolve(REAL_CATALOG).mode, "gates")
 
     def test_resolve_default_catalog_is_gates_available(self):
         resolved = lm.resolve(REAL_CATALOG)
@@ -116,31 +147,25 @@ class DefaultCatalogTest(unittest.TestCase):
 
 
 class SetModeRefusalTest(TempDirCase):
-    def test_router_is_unavailable_and_file_is_unchanged(self):
+    def test_router_refused_while_the_capability_is_not_ready_and_file_is_unchanged(self):
         path = self.put(base_doc())
         before = path.read_bytes()
-        err = self.assert_code(lm.MODE_UNAVAILABLE, lm.set_mode, path, "router")
-        self.assertEqual(err.code, "MODE_UNAVAILABLE")
+        with not_ready():
+            err = self.assert_code(lm.MODE_UNAVAILABLE, lm.set_mode, path, "router")
+        self.assertEqual(err.detail, "ROUTER_CAPABILITY_NOT_READY")
         self.assertEqual(path.read_bytes(), before)
         self.assertEqual(os.listdir(self.dir), [NAME])
 
-    def test_router_refusal_on_byte_exact_copy_of_real_catalog(self):
-        path = self.dir / NAME
-        shutil.copyfile(REAL_CATALOG, path)
-        before = path.read_bytes()
-        self.assert_code(lm.MODE_UNAVAILABLE, lm.set_mode, path, "router")
-        self.assertEqual(path.read_bytes(), before)
-        self.assertEqual(lm.resolve(path).mode, "gates")
-
-    def test_router_refusal_does_not_depend_on_the_file(self):
+    def test_not_ready_refusal_does_not_depend_on_the_file(self):
         cases = (
             ("missing", None),
             ("empty", b""),
             ("not json", b"{ not json"),
             ("router marked available", router_available_doc()),
+            ("router blocked", router_blocked_doc()),
         )
         for label, data in cases:
-            with self.subTest(file=label):
+            with self.subTest(file=label), not_ready():
                 directory = self.fresh_dir()
                 path = directory / NAME
                 before = None
@@ -148,12 +173,54 @@ class SetModeRefusalTest(TempDirCase):
                     payload = json.dumps(data).encode("utf-8") if isinstance(data, dict) else data
                     path.write_bytes(payload)
                     before = path.read_bytes()
-                self.assert_code(lm.MODE_UNAVAILABLE, lm.set_mode, path, "router")
+                err = self.assert_code(lm.MODE_UNAVAILABLE, lm.set_mode, path, "router")
+                self.assertEqual(err.detail, "ROUTER_CAPABILITY_NOT_READY")
                 if before is None:
                     self.assertEqual(os.listdir(directory), [])
                 else:
                     self.assertEqual(path.read_bytes(), before)
                     self.assertEqual(os.listdir(directory), [NAME])
+
+    def test_set_router_succeeds_on_the_real_catalog_copy(self):  # AC-33
+        path = self.dir / NAME
+        shutil.copyfile(REAL_CATALOG, path)
+        resolved = lm.set_mode(path, "router")
+        self.assertEqual(resolved, lm.ResolvedMode("router", True, None))
+        self.assertEqual(lm.resolve(path), lm.ResolvedMode("router", True, None))
+        written = json.loads(path.read_bytes().decode("utf-8"))
+        expected = json.loads(REAL_CATALOG.read_bytes().decode("utf-8"))
+        expected["mode"] = "router"  # only the current mode differs from the shipped catalog
+        self.assertEqual(written, expected)
+        self.assertEqual(os.listdir(self.dir), [NAME])
+
+    def test_set_router_then_gates_round_trips_to_the_shipped_content(self):
+        path = self.dir / NAME
+        shutil.copyfile(REAL_CATALOG, path)
+        lm.set_mode(path, "router")
+        self.assertEqual(lm.set_mode(path, "gates"), lm.ResolvedMode("gates", True, None))
+        self.assertEqual(json.loads(path.read_bytes().decode("utf-8")),
+                         json.loads(REAL_CATALOG.read_bytes().decode("utf-8")))
+
+    def test_set_router_when_router_is_already_current_does_not_rewrite(self):
+        doc = base_doc()
+        doc["mode"] = "router"
+        path = self.put(doc)
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))  # a layout the writer would never produce
+        before = path.read_bytes()
+        self.assertEqual(lm.set_mode(path, "router"), lm.ResolvedMode("router", True, None))
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_set_router_on_a_blocked_router_entry_is_refused_as_invalid_and_unchanged(self):
+        path = self.put(router_blocked_doc())  # READY True + blocked entry: a half-reverted flip fails closed
+        before = path.read_bytes()
+        self.assert_code(lm.CATALOG_INVALID, lm.set_mode, path, "router")
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_set_router_on_missing_or_broken_file_is_refused_by_the_file_rules(self):
+        self.assert_code(lm.CATALOG_UNREADABLE, lm.set_mode, self.dir / "absent.json", "router")
+        broken = self.put(b"{ not json")
+        self.assert_code(lm.CATALOG_INVALID, lm.set_mode, broken, "router")
+        self.assertEqual(broken.read_bytes(), b"{ not json")
 
     def test_unknown_mode_is_refused_and_file_is_unchanged(self):
         for bad in ("bogus", "", "GATES", "Router", " gates", "gates ", None, 5, ["gates"]):
@@ -323,42 +390,80 @@ class LoadRejectsTest(TempDirCase):
         edit("gates description is blank", lambda d: d["modes"]["gates"].__setitem__("description", "   "))
         edit("gates has extra key", lambda d: d["modes"]["gates"].__setitem__("x", 1))
         edit("gates missing description", lambda d: d["modes"]["gates"].pop("description"))
-        edit("router available is string", lambda d: d["modes"]["router"].__setitem__("available", "false"))
-        edit("router available is int 0", lambda d: d["modes"]["router"].__setitem__("available", 0))
-        edit("router blocked_reason is int", lambda d: d["modes"]["router"].__setitem__("blocked_reason", 5))
-        edit("router blocked_reason empty", lambda d: d["modes"]["router"].__setitem__("blocked_reason", ""))
-        edit("router blocked_reason missing", lambda d: d["modes"]["router"].pop("blocked_reason"))
-        edit("router requires missing", lambda d: d["modes"]["router"].pop("requires"))
-        edit("router requires is string", lambda d: d["modes"]["router"].__setitem__("requires", "AEVE S20-T07"))
-        edit("router requires empty", lambda d: d["modes"]["router"].__setitem__("requires", []))
-        edit("router requires has int", lambda d: d["modes"]["router"].__setitem__("requires", [1]))
-        edit("router requires has blank", lambda d: d["modes"]["router"].__setitem__("requires", ["a", " "]))
-        edit("router requires has duplicate", lambda d: d["modes"]["router"].__setitem__("requires", ["a", "a"]))
+        edit("router available is string", lambda d: d["modes"]["router"].__setitem__("available", "true"))
+        edit("router available is int 1", lambda d: d["modes"]["router"].__setitem__("available", 1))
+        edit("router available is null", lambda d: d["modes"]["router"].__setitem__("available", None))
+        edit("router description is int", lambda d: d["modes"]["router"].__setitem__("description", 5))
+        edit("router description is empty", lambda d: d["modes"]["router"].__setitem__("description", ""))
+        edit("router description is blank", lambda d: d["modes"]["router"].__setitem__("description", "  "))
+        edit("router description missing", lambda d: d["modes"]["router"].pop("description"))
         edit("router has extra key", lambda d: d["modes"]["router"].__setitem__("x", 1))
+        edit("available router keeps blocked_reason", lambda d: d["modes"]["router"].__setitem__("blocked_reason", "X"))
+        edit("available router keeps requires", lambda d: d["modes"]["router"].__setitem__("requires", ["a"]))
 
-    def test_router_marked_available_is_rejected(self):
+    def test_blocked_entry_shape_rules_still_apply_when_the_capability_is_not_ready(self):
+        def edit(label, func):
+            doc = router_blocked_doc()
+            func(doc["modes"]["router"])
+            path = self.put(doc)
+            with self.subTest(case=label), not_ready():
+                self.assert_code(lm.CATALOG_INVALID, lm.load, path)
+
+        with not_ready():  # the unedited blocked entry is the valid pre-flip state
+            self.assertFalse(lm.load(self.put(router_blocked_doc())).entry("router").available)
+        edit("blocked_reason is int", lambda r: r.__setitem__("blocked_reason", 5))
+        edit("blocked_reason empty", lambda r: r.__setitem__("blocked_reason", ""))
+        edit("blocked_reason missing", lambda r: r.pop("blocked_reason"))
+        edit("requires missing", lambda r: r.pop("requires"))
+        edit("requires is string", lambda r: r.__setitem__("requires", "AEVE S20-T07"))
+        edit("requires empty", lambda r: r.__setitem__("requires", []))
+        edit("requires has int", lambda r: r.__setitem__("requires", [1]))
+        edit("requires has blank", lambda r: r.__setitem__("requires", ["a", " "]))
+        edit("requires has duplicate", lambda r: r.__setitem__("requires", ["a", "a"]))
+        edit("extra key", lambda r: r.__setitem__("x", 1))
+
+    def test_router_available_while_the_capability_is_not_ready_is_rejected(self):  # AC-35
         path = self.put(router_available_doc())
+        with not_ready():
+            self.assert_code(lm.CATALOG_INVALID, lm.load, path)
+            self.assert_code(lm.CATALOG_INVALID, lm.resolve, path)
+            self.assert_code(lm.CATALOG_INVALID, lm.set_mode, path, "gates")
+            # a hand edit that also makes router the current mode is rejected too
+            doc = router_available_doc()
+            doc["mode"] = "router"
+            self.assert_code(lm.CATALOG_INVALID, lm.load, self.put(doc, "current_router.json"))
+        # the same bytes load once the capability is ready
+        self.assertEqual(lm.load(path).mode, "gates")
+
+    def test_blocked_router_while_the_capability_is_ready_is_rejected(self):  # AC-34
+        path = self.put(router_blocked_doc())
         self.assert_code(lm.CATALOG_INVALID, lm.load, path)
         self.assert_code(lm.CATALOG_INVALID, lm.resolve, path)
         self.assert_code(lm.CATALOG_INVALID, lm.set_mode, path, "gates")
-        # a hand edit that also makes router the current mode is rejected too
-        doc = router_available_doc()
-        doc["mode"] = "router"
-        self.assert_invalid_doc(doc, "router available and current")
-
-    def test_router_with_altered_pinned_values_is_rejected(self):
-        def edit(label, func):
-            doc = base_doc()
-            func(doc["modes"]["router"])
+        err = self.assert_code(lm.CATALOG_INVALID, lm.load, path)
+        self.assertIn("router", err.detail)
+        # a blocked router with other values is rejected too: the flip is all or nothing
+        for label, change in (
+            ("other reason", {"blocked_reason": "SOMETHING_ELSE"}),
+            ("other requires", {"requires": ["AEVE S20-T99"]}),
+        ):
+            doc = router_blocked_doc()
+            doc["modes"]["router"].update(change)
             self.assert_invalid_doc(doc, label)
+        # and while router is the current mode
+        doc = router_blocked_doc()
+        doc["mode"] = "router"
+        self.assert_invalid_doc(doc, "router blocked and current")
 
-        edit("blocked_reason changed", lambda r: r.__setitem__("blocked_reason", "SOMETHING_ELSE"))
-        edit("blocked_reason lower case", lambda r: r.__setitem__("blocked_reason", r["blocked_reason"].lower()))
-        edit("blocked_reason with suffix", lambda r: r.__setitem__("blocked_reason", r["blocked_reason"] + "_"))
-        edit("requires one item", lambda r: r.__setitem__("requires", ["AEVE S20-T07"]))
-        edit("requires reversed", lambda r: r.__setitem__("requires", ["AEVE S20-T08", "AEVE S20-T07"]))
-        edit("requires extra item", lambda r: r.__setitem__("requires", r["requires"] + ["AEVE S20-T09"]))
-        edit("requires item changed", lambda r: r.__setitem__("requires", ["AEVE S20-T07", "AEVE S20-T99"]))
+    def test_blocked_router_with_any_valid_values_loads_while_the_capability_is_not_ready(self):
+        # D3: the pinned-values rule is dropped; only the entry shape and the READY rule decide
+        doc = router_blocked_doc()
+        doc["modes"]["router"].update(blocked_reason="ANY_REASON", requires=["x", "y", "z"])
+        path = self.put(doc)
+        with not_ready():
+            entry = lm.load(path).entry("router")
+        self.assertFalse(entry.available)
+        self.assertEqual((entry.blocked_reason, entry.requires), ("ANY_REASON", ("x", "y", "z")))
 
     def test_gates_unavailable_is_rejected(self):
         doc = base_doc()
@@ -373,9 +478,16 @@ class LoadRejectsTest(TempDirCase):
         self.assert_invalid_doc(doc, "gates unavailable, router current")
 
     def test_current_mode_router_while_router_unavailable(self):
+        doc = router_blocked_doc()
+        doc["mode"] = "router"
+        with not_ready():  # the only state in which a blocked router entry is a valid entry
+            self.assert_code(lm.CATALOG_INVALID, lm.load, self.put(doc))
+
+    def test_current_mode_router_is_valid_now_that_router_is_available(self):
         doc = base_doc()
         doc["mode"] = "router"
-        self.assert_invalid_doc(doc)
+        resolved = lm.resolve(self.put(doc))
+        self.assertEqual(resolved, lm.ResolvedMode("router", True, None))
 
     def test_current_mode_unknown(self):
         for value in ("bogus", "", "GATES"):
@@ -397,8 +509,6 @@ class LoadRejectsTest(TempDirCase):
 
         edit("gates description", lambda d: d["modes"]["gates"].__setitem__("description", lone))
         edit("router description", lambda d: d["modes"]["router"].__setitem__("description", lone))
-        edit("router blocked_reason", lambda d: d["modes"]["router"].__setitem__("blocked_reason", lone))
-        edit("router requires item", lambda d: d["modes"]["router"].__setitem__("requires", ["AEVE S20-T07", lone]))
         edit("current mode", lambda d: d.__setitem__("mode", "\ud800"))
 
     def test_error_detail_does_not_echo_file_content(self):
@@ -409,13 +519,14 @@ class LoadRejectsTest(TempDirCase):
         self.assertNotIn(secret, str(err))
         self.assertNotIn(secret, err.detail)
 
-    def test_valid_catalog_still_loads_with_pinned_router(self):
+    def test_valid_catalog_still_loads_with_available_router(self):
         # guards against a loader that rejects everything
         path = self.put(base_doc())
         self.assertEqual(lm.load(path).mode, "gates")
-        self.assertEqual(lm.load(path).entry("router").requires, ("AEVE S20-T07", "AEVE S20-T08"))
-        self.assertEqual(lm.load(path).entry("router").blocked_reason,
-                         "ROUTER_REQUIRES_AEVE_TASK_PACKET_AND_HANDOFF_VERIFIER")
+        entry = lm.load(path).entry("router")
+        self.assertTrue(entry.available)
+        self.assertIsNone(entry.blocked_reason)
+        self.assertEqual(entry.requires, ())
 
 
 class CliTest(TempDirCase):
@@ -466,21 +577,37 @@ class CliTest(TempDirCase):
         self.assertEqual(code, 1)
         self.assertEqual(payload["code"], "CATALOG_UNREADABLE")
 
-    def test_set_router_exit_1_and_file_unchanged(self):
+    def test_set_router_exit_0_and_get_reports_router(self):  # AC-33
         path = self.put(base_doc())
-        before = path.read_bytes()
         with mock.patch.object(lm, "DEFAULT_PATH", path):
             code, payload = self.run_main(["set", "router"])
+            self.assertEqual(code, 0)
+            self.assertEqual(payload, {"ok": True, "mode": "router", "available": True, "reason": None})
+            code, payload = self.run_main(["get"])
+        self.assertEqual(code, 0)
+        self.assertEqual(payload, {"ok": True, "mode": "router", "available": True, "reason": None})
+        self.assertEqual(json.loads(path.read_bytes().decode("utf-8"))["mode"], "router")
+
+    def test_set_router_exit_1_and_file_unchanged_while_not_ready(self):
+        path = self.put(base_doc())
+        before = path.read_bytes()
+        with mock.patch.object(lm, "DEFAULT_PATH", path), not_ready():
+            code, payload = self.run_main(["set", "router"])
         self.assertEqual(code, 1)
-        self.assertIs(payload["ok"], False)
-        self.assertEqual(payload["code"], "MODE_UNAVAILABLE")
+        self.assertEqual(payload, {"ok": False, "code": "MODE_UNAVAILABLE", "detail": "ROUTER_CAPABILITY_NOT_READY"})
         self.assertEqual(path.read_bytes(), before)
 
-    def test_set_router_exit_1_even_when_the_file_is_broken(self):
+    def test_set_router_exit_1_even_when_the_file_is_broken_while_not_ready(self):
+        with mock.patch.object(lm, "DEFAULT_PATH", self.dir / "absent.json"), not_ready():
+            code, payload = self.run_main(["set", "router"])
+        self.assertEqual(code, 1)
+        self.assertEqual(payload["code"], "MODE_UNAVAILABLE")
+
+    def test_set_router_on_missing_file_is_catalog_unreadable_when_ready(self):
         with mock.patch.object(lm, "DEFAULT_PATH", self.dir / "absent.json"):
             code, payload = self.run_main(["set", "router"])
         self.assertEqual(code, 1)
-        self.assertEqual(payload["code"], "MODE_UNAVAILABLE")
+        self.assertEqual(payload["code"], "CATALOG_UNREADABLE")
 
     def test_set_unknown_mode_exit_1(self):
         path = self.put(base_doc())
@@ -567,6 +694,23 @@ class AtomicWriteTest(TempDirCase):
         written = path.read_bytes()
         self.assertEqual(written, data)
         self.assertNotIn(b"\r", written)
+
+    def test_public_replace_with_retry_moves_a_file_and_retries_brief_errors(self):
+        directory = self.fresh_dir()
+        source, target = directory / "s.tmp", directory / NAME
+        source.write_bytes(b"payload")
+        real_replace = os.replace
+        calls = []
+
+        def flaky(src, dst):
+            calls.append(1)
+            if len(calls) == 1:
+                raise make_permission_error(32)
+            return real_replace(src, dst)
+
+        with mock.patch.object(lm.os, "replace", side_effect=flaky), mock.patch.object(lm.time, "sleep"):
+            lm.replace_with_retry(str(source), target)
+        self.assertEqual((target.read_bytes(), len(calls)), (b"payload", 2))
 
     def test_creates_the_file_when_it_does_not_exist(self):
         path = self.target(old=None)
@@ -665,17 +809,8 @@ class AtomicWriteTest(TempDirCase):
 
 
 class WriteFailedMappingTest(TempDirCase):
-    """`set_mode` turns a failed write into WRITE_FAILED.
-
-    That branch is unreachable with the shipped code, so the code constant ROUTER_CAPABILITY_READY (the documented
-    future switch) is flipped with `mock.patch` and a catalog that declares router available is used.
-    """
-
-    def setUp(self) -> None:
-        super().setUp()
-        patcher = mock.patch.object(lm, "ROUTER_CAPABILITY_READY", True)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+    """`set_mode` turns a failed write into WRITE_FAILED; the write branch is reached by `set router` (the shipped
+    catalog is on `gates`, so switching to router is a real write)."""
 
     def switch_fixture(self) -> Path:
         directory = self.fresh_dir()
