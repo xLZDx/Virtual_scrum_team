@@ -3305,3 +3305,7 @@ Wrote docs/sdlc/LINK_1_GPTPM_SCOPE_NOTE.md (what changed, trust boundary, prior 
 ## 2026-11-12 LINK-1 GPT-PM approval
 
 GPT-PM round 1: VERDICT APPROVE (scoped, static review), head efb5828, base e2613e8 (reply 517da6b3-18f3-577c-a873-c6c1223244e7, request ba627c78-ceca-4b7b-8f3e-adda29a43262; CLI verdict field APPROVE, no contradiction). BLOCKER 0, MAJOR 0, one MINOR (docs said tests come later) fixed in the follow-up commit. Reviewer limits: runtime NOT_RUN, exact head not independently read in the repository. The approval does not allow enabling router or any AEVE integration.
+
+## 2026-11-14 LINK-2 router design (documentation first)
+
+Decision (agent in the operator role; operator said AEVE is finished, merge and prepare for testing): start sprint LINK-2 to build router mode on the merged AEVE S20 commands `aeve packet` and `aeve verify-handoff` (AEVE origin/main 35e5de8). Wrote docs/sdlc/LINK2_ROUTER_DESIGN.md; architect and reliability-reviewer found 12 MAJOR and 6 MINOR issues, all folded into revision 2. Rejected: in-process import of AEVE, VST re-implementing the scope checks, UNKNOWN as a soft pass, omitting --root, availability read from the JSON file. No code changed; ROUTER_CAPABILITY_READY stays False. Tests NOT_RUN.

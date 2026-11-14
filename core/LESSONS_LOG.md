@@ -2563,3 +2563,7 @@ First send used an unregistered scratch worktree path as --cwd (no project bindi
 ## 2026-11-12 SUCCESS LINK-1 approved in round 1
 
 Both MAJOR defects were removed before the round by the reviewer pass and one remediation batch; GPT-PM found only a stale sentence in the docs. Rule: run the language-level reviewer before GPT-PM so the paid round only sees residual issues.
+
+## 2026-11-14 SUCCESS LINK-2 design reviewed by two role reviewers before any code
+
+The first design draft had 12 MAJOR defects (false claim about verdict names, adapter hard-wired to review, no claim lock, unbound result file, flip order contradicting the approval binding), caught by reading, not by running anything. Rule: review a design against the real code before implementing; a writer who cannot read every file must mark those facts as unverified.
