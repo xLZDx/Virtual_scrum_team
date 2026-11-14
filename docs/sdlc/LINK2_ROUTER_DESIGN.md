@@ -92,17 +92,64 @@ Steps per task:
 | UNKNOWN | `ROUTED_UNKNOWN` | story blocked exactly like REJECTED; never a pass; unknown checks listed |
 | INVALID (exit 3) | `ROUTER_INVALID_INPUT` | blocked; `reason` stored; no auto-correction, no auto-retry |
 
-Pinned insertion points (from the signatures read; T4a confirms them by reading the bodies and amends this section if a
-body contradicts them):
-- `review_loop.py`: NO change. The router outcome is a precondition checked by `stage_router` before `run_review_loop` is
-  called. If the outcome is not `ROUTED_VERIFIED` the driver does not call the loop for that attempt. (`Judgement`
-  verdicts FINDINGS and PARTIAL and the final CLEAN/BLOCKED stay as they are.)
-- `final_package.py`: `build_final_package` gets two keyword-only parameters, `router_required: bool = False` and
-  `router_report: Mapping[str, Any] | None = None` (row fields: `outcome`, `status`, `task_id`, `request_sha256`,
-  `packet_sha256`, `result_sha256`, `report_sha256`, `pin_head`). A new `_router_section` runs after `_review_section` in
-  `_build`. With `router_required` True it refuses with `ROUTER_NOT_VERIFIED` unless outcome is `ROUTED_VERIFIED` and
-  `pin_head` equals the expected pin; a recomputed result digest that differs gives `ROUTER_RESULT_DIGEST_MISMATCH`.
-  Defaults keep every existing caller unchanged.
+Pinned insertion points (LINK2-T4a, read from the function bodies at commit 755874e; the amendments to revision 2 are
+marked "amended"):
+
+`tools/vst/review_loop.py` (NO change; confirmed by reading `_Loop.run`, `_Loop.result`, `ReviewLoopResult.__post_init__`):
+- `run_review_loop(state, story_id, *, epoch, attempt_no, initial_head, declared_coverage, iteration_cap,
+  changed_paths_sha256, submit, verify_report, clock, fixer=None, gate=gate_worker_change, manifest_sha256=None,
+  allowed_paths=(), protected_paths=(), max_total_seconds=None, resume=(), on_iteration=None)` returns a
+  `ReviewLoopResult`. (Amended: revision 2 listed only the first five parameters; `declared_coverage`, `iteration_cap`,
+  `changed_paths_sha256`, `submit`, `verify_report` and `clock` are required keyword-only.)
+- The loop reads no link mode and no router data, and its result has no field a router outcome could use. `Judgement.verdict`
+  is CLEAN, FINDINGS, PARTIAL or BLOCKED per iteration; `ReviewLoopResult.verdict` is only CLEAN or BLOCKED (a CLEAN result
+  is refused by `__post_init__` unless the last iteration is CLEAN with the declared coverage). Nothing here needs to change:
+  the router outcome is a precondition checked by `stage_router` in the driver BEFORE `run_review_loop` is called; when the
+  outcome is not `ROUTED_VERIFIED` the driver does not call the loop for that attempt.
+- Verdict matrix (function `router_mode.route_gate(outcome, review_verdict)`): `ELIGIBLE` only for `ROUTED_VERIFIED` with
+  `CLEAN`; every other cell is `BLOCKED`; an outcome of `None` (no verdict yet) or any unknown outcome or verdict string
+  is `BLOCKED`. A cell whose outcome is not `ROUTED_VERIFIED` is normally "not reached" because the loop is not called.
+
+`tools/vst/final_package.py`:
+- `build_final_package(*, story_id, base_head, head, diff_bytes, diff_sha256, changed_paths, test_evidence,
+  required_test_ids, review_results, receipts, isolation_proof, patch_origin_share, now, allow_not_run=None,
+  declared_limits=(), replay_store_verified=False)` calls `_build(...)` positionally; `_build` calls `_review_section`
+  and collects refusals in the list `refusals` of `(code, detail)` pairs (a non-empty list gives `REFUSED`; `_Bad` gives
+  `BLOCKED`).
+- Insertion: three new keyword-only parameters at the END of `build_final_package` and `_build` (amended: revision 2 had
+  two): `router_required: bool = False`, `router_report: Mapping[str, Any] | None = None`,
+  `router_pin_head: str | None = None` (the pin the row must carry; None loads it with
+  `router_aeve_cli.load_pin_head()` only when `router_required` is True).
+- New `_router_section(raw, required, expected_pin, refusals)` runs right after the line
+  `review = _review_section(...)` in `_build` and before `_receipts_section`. When `router_required` is False and
+  `router_report` is None it returns None and the package is byte-identical to today: no `router` key and no
+  `router_report_sha256` key are added. With a row (or `router_required` True) the package gains `"router"` (the row, see
+  below) and `evidence_digests["router_report_sha256"]` (SHA-256 of the row via `_digest_of`).
+- Row fields (exact, all required): `outcome`, `status`, `task_id`, `request_sha256`, `packet_sha256`, `result_sha256`,
+  `report_sha256`, `pin_head`, plus (amended) `result_sha256_recomputed`: the digest of the result copy that the CALLER
+  hashed at package time (`router_mode.report_for_package(row)` fills it). Optional: `aeve_request_sha256`. `status` is a
+  string, `outcome` is one of `ROUTED_VERIFIED`, `ROUTED_REJECTED`, `ROUTED_UNKNOWN`, `ROUTER_INVALID_INPUT`; hex fields
+  have the shape of `_SHA256` and `pin_head` of `_HEX40` (a wrong shape is `_bad(BAD_INPUT, ...)`).
+  (Amended: the builder holds no result bytes and does no file IO, so it cannot recompute the digest itself; it compares
+  `result_sha256_recomputed` with `result_sha256`.)
+- Refusals (added with `_add`, so the verdict is REFUSED): `ROUTER_NOT_VERIFIED` when `router_required` is True and the row
+  is missing, or the outcome is not `ROUTED_VERIFIED`, or `status` is not `VERIFIED`, or `pin_head` differs from the
+  expected pin; `ROUTER_RESULT_DIGEST_MISMATCH` when `result_sha256_recomputed` differs from `result_sha256`. A row passed
+  with `router_required` False is recorded but never refuses.
+- `_free_text` (secret scan) is not extended: the row holds only enums, task_id and hex values checked by shape.
+  `verify_package_current` is unchanged: it does not read the router keys and a router row carries no head.
+
+`tools/vst/u5_real_change_driver.py`:
+- Stages are `stage_propose`, `stage_apply`, `stage_review(args, apply_result, base_head, ev)`,
+  `stage_package(args, apply_result, loop, base_head, ev)`; `main` calls review and package only when
+  `result.verdict == "ACCEPTED"` (after `ev["git_diff_after_apply"]`).
+- Insertion: new `stage_router(args, apply_result, base_head, ev)` between those two lines in `main`. It returns the
+  `RouterRow` or None (skipped). `stage_package` gets an optional last parameter `router_row=None` and passes
+  `router_required=router_row is not None` and `router_report=report_for_package(router_row)` to `build_final_package`.
+  New optional CLI arguments (amended: the driver had no story role): `--router-role`, `--router-title`,
+  `--router-scope-path` (repeatable), `--router-acceptance` (repeatable), `--router-result`, `--router-state-root`. The stage
+  runs only when `link_mode.resolve().mode == "router"` AND `--router-role` is one of `router_request.ROUTER_ROLES`; in
+  every other case it records `ev["router"] = {"skipped": <reason>}` and `gates` flow is unchanged.
 
 ### D3. Flip of `ROUTER_CAPABILITY_READY` (LINK2-T6)
 T6 is the LAST implementation commit of the sprint branch. The sprint's tests, reviewers and the GPT-PM round run on that

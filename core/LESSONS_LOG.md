@@ -2589,3 +2589,9 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 - Kind: SHORTCOMING (the first sketch renamed the old claim file without checking what was renamed).
 - Facts: two takers that both read the same stale claim can race, so the second rename would move the first taker's fresh claim away. The code re-reads the renamed file, compares it with what was judged stale, and links it back when it differs; a rare residual window remains and is listed in the report. Nothing was run (operator ban); found by hand-tracing two interleavings.
 - Rule: after an atomic rename of a lock judged stale, verify the content of what was moved before trusting the takeover, and trace two takers by hand.
+
+## 2026-11-14 — LINK2-T4A a design that names a check can name one the module cannot do
+
+- Kind: SHORTCOMING (revision 2 said final_package recomputes the result digest, but the builder holds no result bytes and does no file IO).
+- Facts: reading build_final_package and _build showed no input for the result file and no pin parameter, and the driver had no story role to decide when the router stage runs. The pinned section now adds a caller-supplied recomputed digest, a pin parameter and CLI arguments. Nothing was run (operator ban).
+- Rule: before pinning a check to a module, read what inputs that module receives; if the evidence is not an input, move the hashing to the caller and pass the result in.
