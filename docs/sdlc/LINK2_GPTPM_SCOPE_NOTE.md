@@ -34,7 +34,7 @@ Review head: the commit that adds this note (code head before it: abe12e5).
 - The POSIX `fcntl` lock branch was never run; only `msvcrt` on Windows was exercised.
 - `main()` tests fake every stage except the router decision; `stage_package` handling of router-row errors is not covered by a test.
 - The 4 skipped tests in tests/uc were not investigated.
-- `release_work_dir` checks the claim and then deletes; a run that starts between the two steps is not covered.
+- Fixed after GPT-PM round 1 (LINK2-FIX3): `release_work_dir` and `sweep` no longer check the claim and then delete. They take the claim lock without waiting, hold it for the whole deletion, and remove `claim.lock` last (Windows: handle closed first; POSIX: unlinked under the lock). The fix is not yet covered by a test run.
 - No end-to-end run of the driver against a real host session result.
 
 ## Known limits and backlog (design doc section 8)

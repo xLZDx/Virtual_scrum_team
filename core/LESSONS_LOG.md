@@ -2638,3 +2638,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SUCCESS (the note lists the unrun POSIX lock branch, the 64 KiB versus 1 MiB cap gap and the backlog up front, so the paid round starts from an honest evidence list).
 - Rule: write the scope note with per-file test counts and the NOT_RUN list before sending the GPT-PM review, and send the review from the registered project folder with PM Bridge health checked first.
+
+## 2026-11-15 — Cleanup checked the lock and then deleted without holding it
+
+- Kind: SHORTCOMING (release_work_dir and sweep probed the claim and deleted afterwards; our own tests and reviewers passed it, GPT-PM round 1 caught the check-then-act gap).
+- Rule: a cleanup that deletes under an OS lock must take that same lock itself and hold it until the deletion ended; a probe-then-delete is never enough, and a lock file inside the deleted directory is removed last, after the handle is released on Windows.

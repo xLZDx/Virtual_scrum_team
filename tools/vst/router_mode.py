@@ -174,7 +174,8 @@ def _unlink(path: pathlib.Path) -> None:
 # ------------------------------------------------------------------ claim and slots (OS file locks)
 # An OS lock on one byte of the lock file, held through an open descriptor for the whole critical section. The OS drops
 # it when the process ends, so a crash releases it: there is no age-based takeover, no rename and no restore. The lock
-# files are never deleted by a holder (only `sweep` or `release_work_dir` remove a directory whose claim is free).
+# files are never deleted by a run. `sweep` and `release_work_dir` remove a directory only while holding its claim
+# themselves (taken without waiting, kept to the end of the removal; see `_remove_tree` for the claim-file order).
 def _lock_nonblocking(fd: int) -> bool:
     """One non-blocking attempt to lock byte 0 of `fd`. False when another holder has it."""
     try:
@@ -196,13 +197,25 @@ def _try_lock_file(path: pathlib.Path) -> int | None:
     """Open (create) the lock file and try to lock it: the open descriptor when held, None when someone else holds it.
     On Windows an open of a delete-pending path raises PermissionError: that is 'not acquired, poll again'."""
     try:
-        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+        except FileNotFoundError:  # the work directory was removed under a cleanup lock: recreate it once and retry
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
     except PermissionError:
         return None
     except OSError as exc:
         raise RouterError(rac.ROUTER_STATE_DIR_UNUSABLE, f"cannot open a lock file ({type(exc).__name__})") from exc
     try:
         if _lock_nonblocking(fd):
+            if _fcntl is not None:  # POSIX may unlink a locked file: a lock on a replaced inode is not the claim
+                try:
+                    if os.stat(path).st_ino == os.fstat(fd).st_ino:
+                        return fd
+                except FileNotFoundError:
+                    pass
+                os.close(fd)
+                return None
             return fd
     except OSError as exc:
         os.close(fd)
@@ -214,20 +227,13 @@ def _try_lock_file(path: pathlib.Path) -> int | None:
     return None
 
 
-def _claim_held(path: pathlib.Path) -> bool:
-    """True when `path` is a lock file that another holder has (or that cannot be probed). A missing file is free."""
+def _try_claim(directory: pathlib.Path) -> int | None:
+    """One non-blocking attempt to take the claim of a work directory (the lock route_task takes): the open descriptor,
+    or None when a run holds it, the lock file cannot be opened, or the lock cannot be probed. Never waits."""
     try:
-        fd = os.open(path, os.O_RDWR)
-    except FileNotFoundError:
-        return False
-    except OSError:
-        return True
-    try:
-        return not _lock_nonblocking(fd)
-    except OSError:
-        return True
-    finally:
-        os.close(fd)  # closing drops a lock taken by the probe
+        return _try_lock_file(directory / CLAIM_NAME)
+    except RouterError:
+        return None
 
 
 @contextmanager
@@ -264,8 +270,17 @@ def _is_link(path: str) -> bool:
     return os.path.islink(path) or bool(getattr(os.path, "isjunction", lambda _p: False)(path))
 
 
-def _remove_tree(path: pathlib.Path, router_root: pathlib.Path) -> bool:
-    """Delete `path` only when it lies strictly inside `router_root` and holds no link or junction. True when gone."""
+def _remove_tree(path: pathlib.Path, router_root: pathlib.Path, claim_fd: int | None = None) -> bool:
+    """Delete `path` only when it lies strictly inside `router_root` and holds no link or junction. True when gone.
+
+    `claim_fd` is the open, locked descriptor of `path/claim.lock` (from `_try_claim`); this function takes ownership
+    and always closes it. Everything except the claim file is removed while the lock is held, so no run can have its
+    state, packet or result deleted after it took the claim. The claim file itself is removed last:
+    - Windows: an open file cannot be deleted, so the descriptor is closed first, then `claim.lock` and the directory
+      are removed. A run that takes the claim in that gap finds the directory empty (new state, nothing lost) and its
+      open handle makes our unlink fail with PermissionError, so the directory stays and nothing of it is deleted.
+    - POSIX: unlinking an open file is allowed, so the claim file is unlinked and the directory removed while the lock
+      is still held; `_try_lock_file` rejects a lock taken on an already unlinked inode."""
     try:
         root = router_root.resolve()
         target = path.resolve()
@@ -274,15 +289,27 @@ def _remove_tree(path: pathlib.Path, router_root: pathlib.Path) -> bool:
         walk = list(os.walk(path, topdown=False, followlinks=False))
         if any(_is_link(os.path.join(base, name)) for base, dirs, files in walk for name in dirs + files):
             return False
+        claim_path = os.path.join(path, CLAIM_NAME)
         for base, dirs, files in walk:
             for name in files:
-                os.unlink(os.path.join(base, name))
+                full = os.path.join(base, name)
+                if claim_fd is not None and full == claim_path:
+                    continue
+                os.unlink(full)
             for name in dirs:
                 os.rmdir(os.path.join(base, name))
+        if claim_fd is not None:
+            if _fcntl is None:  # Windows: release the handle, then delete the claim file
+                os.close(claim_fd)
+                claim_fd = None
+            os.unlink(claim_path)
         os.rmdir(path)
         return True
     except OSError:
         return False
+    finally:
+        if claim_fd is not None:
+            os.close(claim_fd)
 
 
 def _is_blocked(state: Mapping[str, Any]) -> bool:
@@ -307,8 +334,12 @@ def _sweep_tmp(router_root: pathlib.Path, cfg: RouterConfig, now: float) -> int:
 def _sweep_task_dir(task_dir: pathlib.Path, router_root: pathlib.Path, cfg: RouterConfig, now: float) -> int:
     removed = 0
     for pending in list(task_dir.iterdir()):
+        claim_fd: int | None = None
         try:
-            if not pending.name.endswith("-pending") or _claim_held(pending / CLAIM_NAME):
+            if not pending.name.endswith("-pending") or not pending.is_dir() or _is_link(str(pending)):
+                continue
+            claim_fd = _try_claim(pending)  # non-blocking; held until the removal ends, a held claim skips the directory
+            if claim_fd is None:
                 continue
             state_path = pending / STATE_NAME
             if not state_path.is_file() or now - state_path.stat().st_mtime <= cfg.blocked_retention_seconds:
@@ -318,10 +349,18 @@ def _sweep_task_dir(task_dir: pathlib.Path, router_root: pathlib.Path, cfg: Rout
                 continue
             prefix = pending.name[: -len("pending")]
             for sibling in list(task_dir.iterdir()):
-                if sibling.name.startswith(prefix) and _remove_tree(sibling, router_root):
+                if sibling == pending or not sibling.name.startswith(prefix):
+                    continue
+                if _remove_tree(sibling, router_root):
                     removed += 1
+            fd, claim_fd = claim_fd, None  # _remove_tree owns the descriptor from here
+            if _remove_tree(pending, router_root, fd):
+                removed += 1
         except (OSError, ValueError):
             continue
+        finally:
+            if claim_fd is not None:
+                os.close(claim_fd)
     return removed
 
 
@@ -347,7 +386,8 @@ def sweep(router_root: pathlib.Path, cfg: RouterConfig) -> dict[str, int]:
 
 def release_work_dir(state_root: str | os.PathLike, task_id: str, request_sha256: str) -> int:
     """Delete the work directories of one request after the story's final package is built (D5). Returns how many.
-    Refuses (ROUTER_LOCK_TIMEOUT) while a run holds the request's claim."""
+    Takes the request's claim without waiting and holds it until the deletion ended; when a run holds it (or it cannot be
+    taken) it deletes nothing and raises ROUTER_LOCK_TIMEOUT."""
     if not rr.valid_task_id(task_id) or not isinstance(request_sha256, str) or len(request_sha256) != 64:
         raise RouterError(rr.ROUTER_BAD_REQUEST, "task_id or request_sha256 is malformed")
     router_root = pathlib.Path(state_root) / ROUTER_DIRNAME
@@ -355,11 +395,20 @@ def release_work_dir(state_root: str | os.PathLike, task_id: str, request_sha256
     removed = 0
     if task_dir.is_dir():
         children = [child for child in list(task_dir.iterdir()) if child.name.startswith(request_sha256[:16] + "-")]
-        if any(_claim_held(child / CLAIM_NAME) for child in children):
-            raise RouterError(ROUTER_LOCK_TIMEOUT, "release_work_dir: a run holds the claim of this request")
-        for child in children:
-            if _remove_tree(child, router_root):
-                removed += 1
+        claims: dict[pathlib.Path, int] = {}
+        try:
+            for child in children:  # take every claim first: one held claim means nothing is deleted
+                if child.is_dir() and (child.name.endswith("-pending") or (child / CLAIM_NAME).exists()):
+                    fd = _try_claim(child)
+                    if fd is None:
+                        raise RouterError(ROUTER_LOCK_TIMEOUT, "release_work_dir: a run holds the claim of this request")
+                    claims[child] = fd
+            for child in children:
+                if _remove_tree(child, router_root, claims.pop(child, None)):
+                    removed += 1
+        finally:
+            for fd in claims.values():  # claims not handed to _remove_tree (an error before its turn)
+                os.close(fd)
         try:
             task_dir.rmdir()
         except OSError:

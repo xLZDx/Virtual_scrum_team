@@ -168,8 +168,18 @@ part is a defect. Rollback: revert T6; a half-reverted state fails closed in `lo
   heartbeat is needed however long a run takes (worst case about 850 s). Nobody deletes a lock file while a run may hold
   it. An open that raises `PermissionError` (Windows delete-pending path) counts as "not acquired, poll again".
   Lock wait is a bounded poll (60 s, 0.5 s); expiry is `ROUTER_LOCK_TIMEOUT`, meaning "another run holds this story
-  longer than this call waits": the caller retries later and then adopts the recorded state. `release_work_dir` refuses
-  with `ROUTER_LOCK_TIMEOUT` while the claim is held; `sweep` skips a directory whose claim is held.
+  longer than this call waits": the caller retries later and then adopts the recorded state.
+- Cleanup holds the claim (no "check then delete"): `release_work_dir` and `sweep` take the same lock with ONE
+  non-blocking attempt and keep it until the removal ended. `release_work_dir` takes every claim of the request first;
+  when one is held it deletes nothing and raises `ROUTER_LOCK_TIMEOUT`. `sweep` skips a directory whose claim is held.
+  The lock file lies inside the directory being removed, so the order is: delete everything except `claim.lock` under
+  the lock; then on Windows (an open file cannot be deleted) close the handle and delete `claim.lock` and the
+  directory; on POSIX unlink `claim.lock` and remove the directory while still holding the lock. Choice: removing the
+  content under the lock is race-free for state, packet and result (nothing a run wrote can be deleted, because a run
+  writes only after it holds the claim). On Windows, a run that takes the claim between the close and the unlink keeps
+  the directory (our unlink fails on its open handle) and finds it empty, i.e. state NEW. On POSIX a waiter may lock an
+  inode that was just unlinked, so `_try_lock_file` compares the locked descriptor with the path and polls again on a
+  mismatch; a waiter whose directory vanished recreates it once and retries.
 - Cap on concurrent AEVE subprocesses: 2 (chosen default), counted by slot lock files locked by the same rule (held
   for the AEVE call only); waiting is bounded and ends in `ROUTER_LOCK_TIMEOUT`.
 - States: NEW, AWAITING_RESULT (packet recorded, result absent: a normal wait, no AEVE call, not an error), RESULT_COPIED,
@@ -263,7 +273,7 @@ package with `ROUTER_NOT_VERIFIED` whatever `router_required` says.
 
 **T5 state and concurrency.** AC-24: two concurrent runs of one task call AEVE once per command and return the same row.
 AC-25: a claim held by a live run makes the second caller wait, then `ROUTER_LOCK_TIMEOUT`; a claim whose holder ended
-(lock released by the OS) is acquired at once, with no age rule. AC-26: crash after `packet` and before `verify` resumes in AWAITING_RESULT or verifies once, never re-runs
+(lock released by the OS) is acquired at once, with no age rule. Cleanup (D5/D4): `release_work_dir` and `sweep` hold the claim lock for the whole deletion; with the claim held by another process, `release_work_dir` deletes nothing and raises `ROUTER_LOCK_TIMEOUT`, `sweep` skips the directory. AC-26: crash after `packet` and before `verify` resumes in AWAITING_RESULT or verifies once, never re-runs
 `packet` for a recorded step. AC-27: result file altered after copy gives `ROUTER_RESULT_DIGEST_MISMATCH`; the host's original file
 is never passed to AEVE. AC-28: a row whose pin head, or any digest, differs is re-verified and logged `rerun`; a matching row is
 logged `adopted`. AC-29: torn result gives `ROUTER_BAD_OUTPUT`. AC-30: third concurrent AEVE call waits on the 2-slot cap.
