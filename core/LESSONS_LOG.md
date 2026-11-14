@@ -2633,3 +2633,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SUCCESS (the lock, crash and sweep behaviour is proved with a separate process that holds byte 0 and is killed, not with planted files, so a return to age-based claims turns the tests red).
 - Rule: test an OS-lock contract with a real second process and a kill, and write the lock helper straight against msvcrt/fcntl instead of the code under test.
+
+## 2026-11-14 — LINK2 scope note states NOT_RUN and known limits before the GPT-PM round
+
+- Kind: SUCCESS (the note lists the unrun POSIX lock branch, the 64 KiB versus 1 MiB cap gap and the backlog up front, so the paid round starts from an honest evidence list).
+- Rule: write the scope note with per-file test counts and the NOT_RUN list before sending the GPT-PM review, and send the review from the registered project folder with PM Bridge health checked first.
