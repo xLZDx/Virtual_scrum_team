@@ -213,6 +213,9 @@ def _replace_with_retry(source: str, target: Path) -> None:
             time.sleep(_RETRY_DELAY_SECONDS)
 
 
+replace_with_retry = _replace_with_retry  # public export for the router work files (LINK2-T5), same behaviour
+
+
 def _write_atomic(path: Path, data: bytes) -> None:
     handle, temp_name = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
     try:

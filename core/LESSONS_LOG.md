@@ -2583,3 +2583,9 @@ The generic runner was cut out of run_review by moving the body unchanged and ad
 ## 2026-11-14 SHORTCOMING LINK2-T3 AEVE input caps are smaller than the VST caps
 
 AEVE reads packet and result files only up to 64 KiB, while the design caps VST packets and results at 1 MiB; a file between the two would come back as an AEVE INVALID answer, not a VST size refusal. Layer: found by reading the AEVE cli while writing the wrapper, not by a run. Rule: when two sides both cap an input, record the smaller cap in the design and test the gap.
+
+## 2026-11-14 — LINK2-T5 a stale-lock takeover can rename a fresh claim
+
+- Kind: SHORTCOMING (the first sketch renamed the old claim file without checking what was renamed).
+- Facts: two takers that both read the same stale claim can race, so the second rename would move the first taker's fresh claim away. The code re-reads the renamed file, compares it with what was judged stale, and links it back when it differs; a rare residual window remains and is listed in the report. Nothing was run (operator ban); found by hand-tracing two interleavings.
+- Rule: after an atomic rename of a lock judged stale, verify the content of what was moved before trusting the takeover, and trace two takers by hand.
