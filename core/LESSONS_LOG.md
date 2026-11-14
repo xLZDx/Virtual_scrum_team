@@ -2628,3 +2628,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: FAILURE (three reviewers independently showed that the rename-and-restore stale-claim takeover lets two of three contenders hold the lock, that no heartbeat covered a run longer than the stale age, and that on Windows a delete-pending path raises PermissionError instead of FileExistsError).
 - Rule: use an OS lock held for the process lifetime for mutual exclusion (the OS releases it on a crash); never build a lock from an age rule plus rename, and derive any timeout from the computed worst-case run time.
+
+## 2026-11-14 — LINK2-TEST lock tests must hold a real OS lock from a second process
+
+- Kind: SUCCESS (the lock, crash and sweep behaviour is proved with a separate process that holds byte 0 and is killed, not with planted files, so a return to age-based claims turns the tests red).
+- Rule: test an OS-lock contract with a real second process and a kill, and write the lock helper straight against msvcrt/fcntl instead of the code under test.

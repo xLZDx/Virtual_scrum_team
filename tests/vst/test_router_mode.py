@@ -90,6 +90,67 @@ def code_of(func, *args, **kwargs) -> RouterError:
     return info.value
 
 
+# -- real OS locks (design D4): byte 0 of the file, msvcrt.locking on Windows, fcntl.flock elsewhere. These helpers are
+# independent of the code under test: they speak to the operating system directly.
+def os_lock(path: pathlib.Path):
+    """Open (create) `path` and take the OS lock on byte 0 in this process: the descriptor, or None when held."""
+    fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None
+    return fd
+
+
+HOLDER_SCRIPT = (
+    "import os, sys\n"
+    "fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT, 0o600)\n"
+    "if os.name == 'nt':\n"
+    "    import msvcrt\n"
+    "    os.lseek(fd, 0, 0)\n"
+    "    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)\n"
+    "else:\n"
+    "    import fcntl\n"
+    "    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+    "print('held', flush=True)\n"
+    "sys.stdin.readline()\n"
+)
+
+
+@pytest.fixture()
+def holder():
+    """Start a separate process that holds the OS lock of a file; yields start(path). Every process is killed at the end."""
+    import subprocess
+    import sys
+
+    procs = []
+
+    def start(path: pathlib.Path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        proc = subprocess.Popen([sys.executable, "-I", "-c", HOLDER_SCRIPT, str(path)], stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, text=True)
+        procs.append(proc)
+        assert proc.stdout.readline().strip() == "held"
+        return proc
+
+    yield start
+    for proc in procs:
+        if proc.poll() is None:
+            proc.kill()
+        proc.wait(30)
+        proc.stdin.close()
+        proc.stdout.close()
+
+
 # ============================================================ selection and request checks (AC-22, AC-23)
 def test_gates_mode_makes_no_aeve_call_and_creates_nothing(env):  # AC-22
     (env.tmp / "gates").mkdir()
@@ -251,22 +312,43 @@ def test_packet_timeout_leaves_state_new_and_a_retry_call_succeeds(env):
 
 def test_crash_after_packet_before_verify_never_reruns_packet(env):  # AC-26
     env.route(result=None)  # the process "dies" here: packet recorded, no result yet
-    assert not (env.pending() / rm.CLAIM_NAME).exists()
+    fd = os_lock(env.pending() / rm.CLAIM_NAME)  # the claim file stays, but the run must have let go of the OS lock
+    assert fd is not None
+    os.close(fd)
     row = env.route()
     assert row.outcome == "ROUTED_VERIFIED"
     assert len(env.stub.calls("packet")) == 1 and len(env.stub.calls("verify-handoff")) == 1
 
 
-def test_crash_while_holding_the_claim_resumes_after_the_claim_goes_stale(env):  # AC-26, AC-25
+def test_crash_while_a_process_holds_the_claim_resumes_at_once_after_it_is_killed(env, holder):  # AC-26, AC-25
+    env.route(result=None)
+    proc = holder(env.pending() / rm.CLAIM_NAME)  # a run that holds the claim ...
+    assert code_of(env.route, cfg=env.with_cfg(lock_wait_seconds=0.3)).reason == "ROUTER_LOCK_TIMEOUT"
+    proc.kill()  # ... and crashes: no release call, the OS drops the lock
+    proc.wait(30)
+    started = time.monotonic()
+    row = env.route()
+    assert time.monotonic() - started < 10  # at once: no age rule to wait out
+    assert row.outcome == "ROUTED_VERIFIED"
+    assert len(env.stub.calls("packet")) == 1 and len(env.stub.calls("verify-handoff")) == 1
+    assert not any("takeover" in json.dumps(l) for l in env.log())
+
+
+@pytest.mark.parametrize("planted", [
+    json.dumps({"owner": "dead-process", "created_at": 1.0}).encode("ascii"),
+    json.dumps({"owner": "someone-else", "created_at": 9_999_999_999.0}).encode("ascii"),  # looks very fresh
+    b"{torn", b"",
+])
+def test_a_pre_existing_claim_file_without_a_held_lock_never_blocks(env, planted):  # AC-25: no age rule at all
     env.route(result=None)
     claim = env.pending() / rm.CLAIM_NAME
-    claim.write_text(json.dumps({"owner": "dead-process", "created_at": time.time() - 1000}), encoding="ascii")
-    row = env.route()
-    assert row.outcome == "ROUTED_VERIFIED"
-    assert len(env.stub.calls("packet")) == 1 and len(env.stub.calls("verify-handoff")) == 1
-    assert any(l["step"] == "claim" and l["outcome"] == "STALE_CLAIM_TAKEN_OVER" and l["claim_takeover"] is True
-               for l in env.log())
-    assert not claim.exists()
+    claim.write_bytes(planted)
+    old = time.time() - 100_000
+    os.utime(claim, (old, old))
+    started = time.monotonic()
+    row = env.route(cfg=env.with_cfg(lock_wait_seconds=0.5))
+    assert time.monotonic() - started < 10 and row.outcome == "ROUTED_VERIFIED"
+    assert len(env.stub.calls("packet")) == 1
 
 
 def test_crash_between_copy_and_verdict_reverifies_once_and_logs_rerun(env):  # AC-26
@@ -401,6 +483,26 @@ def test_state_file_forged_to_verified_is_not_adopted(env):  # tampered result, 
     assert row.outcome == "ROUTED_UNKNOWN"
 
 
+@pytest.mark.parametrize("tampered", [
+    "../../../escape", "x", "", None, 7, "ABCDEF0123456789-0123456789abcdef",  # wrong prefix / shape
+    "{prefix}-{short}", "{prefix}-{upper}", "{prefix}-{long}", "{prefix}/{hex16}", "{prefix}\\{hex16}",
+])
+def test_result_dir_tamper_fails_the_exact_name_check_on_rerun(env, tampered):  # D5: '<request16>-<result16 hex>'
+    row = env.route()
+    prefix = row.request_sha256[:16]
+    hex16 = row.result_sha256[:16]
+    if isinstance(tampered, str):
+        tampered = tampered.format(prefix=prefix, hex16=hex16, short=hex16[:15], upper=hex16.upper() + "G"[:0] + "Z",
+                                   long=hex16 + "0")
+    state = env.state_json()
+    assert state["result_dir"] == f"{prefix}-{hex16}"  # the exact form the design names
+    state["result_dir"] = tampered
+    (env.pending() / rm.STATE_NAME).write_bytes(json.dumps(state).encode("ascii"))
+    calls_before = len(env.stub.calls("verify-handoff"))
+    assert code_of(env.route).reason == "ROUTER_STATE_DIR_UNUSABLE"
+    assert len(env.stub.calls("verify-handoff")) == calls_before  # nothing was verified through a forged path
+
+
 def test_unknown_is_never_a_pass_through_the_whole_flow(env):
     env.stub.set("verify-handoff", checks={"TESTS_FOR_LOGIC": "UNKNOWN"})
     rows = [env.route(), env.route()]  # the second is an adoption
@@ -447,58 +549,80 @@ def test_four_concurrent_runs_of_one_task_still_call_aeve_once(env):  # AC-24
     assert len({r.report_sha256 for r in results}) == 1
 
 
-def test_fresh_foreign_claim_makes_the_caller_wait_then_lock_timeout(env):  # AC-25
+def test_claim_held_by_another_process_makes_the_caller_wait_then_lock_timeout_then_acquire_at_once(env, holder):  # AC-25
     env.route(result=None)
     claim = env.pending() / rm.CLAIM_NAME
-    foreign = json.dumps({"owner": "someone-else", "created_at": time.time()})
-    claim.write_text(foreign, encoding="ascii")
+    proc = holder(claim)
     started = time.monotonic()
     err = code_of(env.route, cfg=env.with_cfg(lock_wait_seconds=0.6))
     assert err.reason == "ROUTER_LOCK_TIMEOUT"
-    assert time.monotonic() - started >= 0.6  # it waited
-    assert claim.read_text(encoding="ascii") == foreign  # the foreign claim is untouched
-    assert len(env.stub.calls("packet")) == 1 and env.stub.calls("verify-handoff") == []
+    waited = time.monotonic() - started
+    assert 0.6 <= waited < 20  # it waited the bounded time, no longer
+    assert len(env.stub.calls("packet")) == 1 and env.stub.calls("verify-handoff") == []  # no AEVE call while blocked
+    proc.stdin.write("\n")  # the holder ends normally: the lock is released
+    proc.stdin.flush()
+    proc.wait(30)
+    started = time.monotonic()
+    assert env.route().outcome == "ROUTED_VERIFIED"
+    assert time.monotonic() - started < 10
 
 
-@pytest.mark.parametrize("age,stale", [(599, False), (600, False), (601, True), (3600, True)])
-def test_claim_is_stale_only_after_600_seconds(env, age, stale):  # AC-25
-    now = 5_000_000.0
-    cfg = env.with_cfg(clock=lambda: now, lock_wait_seconds=0.3)
-    env.route(result=None, cfg=cfg)
-    claim = env.pending() / rm.CLAIM_NAME
-    claim.write_text(json.dumps({"owner": "dead", "created_at": now - age}), encoding="ascii")
-    if stale:
-        assert env.route(result=None, cfg=cfg).state == "AWAITING_RESULT"
-        assert any(l["claim_takeover"] is True for l in env.log())
-    else:
-        assert code_of(env.route, result=None, cfg=cfg).reason == "ROUTER_LOCK_TIMEOUT"
-        assert claim.exists()
-
-
-def test_torn_claim_file_ages_by_its_modification_time(env):  # AC-25
+def test_two_concurrent_claim_attempts_one_holds_the_other_times_out_in_a_thread(env):  # AC-25 (in-process holder)
     env.route(result=None)
     claim = env.pending() / rm.CLAIM_NAME
-    claim.write_bytes(b"{torn")
-    assert code_of(env.route, cfg=env.with_cfg(lock_wait_seconds=0.3)).reason == "ROUTER_LOCK_TIMEOUT"
-    old = time.time() - 4000
-    os.utime(claim, (old, old))
-    assert env.route(result=None).state == "AWAITING_RESULT"
+    fd = os_lock(claim)
+    assert fd is not None
+    try:
+        results, errors = run_threads([lambda: env.route(cfg=env.with_cfg(lock_wait_seconds=0.5))])
+        assert results == [None] and errors[0].reason == "ROUTER_LOCK_TIMEOUT"
+    finally:
+        os.close(fd)
+    assert env.route().outcome == "ROUTED_VERIFIED"
+
+
+def test_the_claim_is_held_for_the_whole_aeve_call_and_released_after(env):  # AC-24, AC-25
+    env.stub.set("packet", sleep=1.5)
+    claim = env.pending() / rm.CLAIM_NAME
+    seen = []
+
+    def probe():
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not env.stub.calls("packet"):
+            time.sleep(0.05)
+        fd = os_lock(claim)  # while AEVE runs, the claim must be held
+        seen.append(fd is not None)
+        if fd is not None:
+            os.close(fd)
+
+    results, errors = run_threads([lambda: env.route(result=None), probe])
+    assert errors == [None, None] and seen == [False]
+    fd = os_lock(claim)
+    assert fd is not None  # released after the run
+    os.close(fd)
 
 
 def test_claim_is_released_after_success_and_after_failure(env):
     claim = env.pending() / rm.CLAIM_NAME
     env.route()
-    assert not claim.exists()
+    fd = os_lock(claim)
+    assert fd is not None
+    os.close(fd)
     env.stub.set("verify-handoff", exit=1)
     env.write_host(dict(S.HOST_RESULT, changed=["x.py"]))
     code_of(env.route)
-    assert not claim.exists()
+    fd = os_lock(claim)
+    assert fd is not None
+    os.close(fd)
 
 
-def test_slot_lock_files_are_released(env):
+def test_slot_locks_are_released(env):
     env.route()
     slots = env.router_root / rm.SLOTS_DIRNAME
-    assert slots.is_dir() and list(slots.glob("*.lock")) == []
+    assert slots.is_dir()
+    for path in slots.glob("*.lock"):
+        fd = os_lock(path)
+        assert fd is not None, path.name
+        os.close(fd)
 
 
 def test_third_concurrent_aeve_call_waits_on_the_two_slot_cap(env):  # AC-30
@@ -525,12 +649,16 @@ def test_one_slot_config_serialises_the_calls(env):
 def test_waiting_for_a_slot_is_bounded(env):
     slots = env.router_root / rm.SLOTS_DIRNAME
     slots.mkdir(parents=True)
-    fresh = json.dumps({"owner": "x", "created_at": time.time()})
-    for index in range(2):
-        (slots / f"slot-{index}.lock").write_text(fresh, encoding="ascii")
-    err = code_of(env.route, result=None, cfg=env.with_cfg(lock_wait_seconds=0.4))
-    assert err.reason == "ROUTER_LOCK_TIMEOUT"
-    assert env.stub.calls() == []
+    fds = [os_lock(slots / f"slot-{index}.lock") for index in range(2)]
+    try:
+        assert None not in fds
+        err = code_of(env.route, result=None, cfg=env.with_cfg(lock_wait_seconds=0.4))
+        assert err.reason == "ROUTER_LOCK_TIMEOUT"
+        assert env.stub.calls() == []
+    finally:
+        for fd in fds:
+            os.close(fd)
+    assert env.route(result=None).state == "AWAITING_RESULT"  # slots free again: acquired at once
 
 
 # ============================================================ sweep and retention (AC-31)
@@ -601,9 +729,62 @@ def test_a_directory_with_a_claim_is_never_swept(env):  # AC-31
     request = S.sample_request(task_id="LINK2-CLAIMED")
     env.route(request)
     age(env.pending(request) / rm.STATE_NAME, 20 * 86400)
+    fd = os_lock(env.pending(request) / rm.CLAIM_NAME)  # a live run holds the claim
+    assert fd is not None
+    try:
+        rm.sweep(env.router_root, env.cfg)
+        assert env.pending(request).exists()  # the held claim protects the directory
+    finally:
+        os.close(fd)
+    rm.sweep(env.router_root, env.cfg)
+    assert not env.pending(request).exists()  # once the claim is free the old BLOCKED directory goes
+
+
+def test_a_pre_existing_free_claim_file_does_not_protect_an_old_blocked_directory(env):  # AC-31, AC-25
+    env.stub.set("verify-handoff", checks={"CHANGES_INSIDE_SCOPE": "FAIL"})
+    request = S.sample_request(task_id="LINK2-FREECLAIM")
+    env.route(request)
+    age(env.pending(request) / rm.STATE_NAME, 20 * 86400)
     (env.pending(request) / rm.CLAIM_NAME).write_text(json.dumps({"owner": "x", "created_at": time.time()}))
     rm.sweep(env.router_root, env.cfg)
+    assert not env.pending(request).exists()
+
+
+def test_sweep_skips_a_held_claim_held_by_another_process(env, holder):  # AC-31
+    env.stub.set("verify-handoff", checks={"CHANGES_INSIDE_SCOPE": "FAIL"})
+    request = S.sample_request(task_id="LINK2-HELDPROC")
+    env.route(request)
+    age(env.pending(request) / rm.STATE_NAME, 20 * 86400)
+    proc = holder(env.pending(request) / rm.CLAIM_NAME)
+    rm.sweep(env.router_root, env.cfg)
     assert env.pending(request).exists()
+    proc.kill()
+    proc.wait(30)
+    rm.sweep(env.router_root, env.cfg)  # crashed holder: the OS dropped the lock, the sweep may remove it now
+    assert not env.pending(request).exists()
+
+
+def test_release_work_dir_refuses_while_the_claim_is_held_and_works_after(env, holder):  # D4
+    first = env.route(S.sample_request(task_id="LINK2-REL-HELD"))
+    claim = env.pending(S.sample_request(task_id="LINK2-REL-HELD")) / rm.CLAIM_NAME
+    proc = holder(claim)
+    assert code_of(rm.release_work_dir, env.state_root, "LINK2-REL-HELD", first.request_sha256).reason == \
+        "ROUTER_LOCK_TIMEOUT"
+    assert pathlib.Path(first.work_dir).exists() and env.pending(S.sample_request(task_id="LINK2-REL-HELD")).exists()
+    proc.kill()
+    proc.wait(30)
+    assert rm.release_work_dir(env.state_root, "LINK2-REL-HELD", first.request_sha256) == 2
+    assert not (env.router_root / "LINK2-REL-HELD").exists()
+
+
+def test_release_work_dir_has_no_config_parameter():
+    import inspect
+
+    assert list(inspect.signature(rm.release_work_dir).parameters) == ["state_root", "task_id", "request_sha256"]
+
+
+def test_config_has_no_claim_stale_seconds_any_more():
+    assert not hasattr(rm.RouterConfig(), "claim_stale_seconds")
 
 
 def test_release_work_dir_removes_only_the_requests_directories(env):
@@ -632,7 +813,7 @@ def test_release_work_dir_cannot_be_pointed_outside_the_router_root(env):
 
 
 # ============================================================ log (AC-32)
-LOG_FIELDS = {"at", "task_id", "request_sha256", "step", "outcome", "retry_count", "resume", "claim_takeover"}
+LOG_FIELDS = {"at", "task_id", "request_sha256", "step", "outcome", "retry_count", "resume"}
 
 
 def test_every_step_writes_one_log_line_with_the_design_fields_and_no_content(env):  # AC-32
@@ -643,7 +824,7 @@ def test_every_step_writes_one_log_line_with_the_design_fields_and_no_content(en
     for line in lines:
         assert set(line) == LOG_FIELDS
         assert line["task_id"] == S.TASK and line["request_sha256"] == row.request_sha256
-        assert line["retry_count"] == 0 and line["claim_takeover"] is False and line["resume"] == "none"
+        assert line["retry_count"] == 0 and line["resume"] == "none"
     assert [l["outcome"] for l in lines] == ["OK", "OK", "ROUTED_VERIFIED"]
     text = (env.router_root / rm.LOG_NAME).read_text(encoding="ascii")
     assert HOST_MARKER not in text and "src/app.py" not in text and "Result stays inside scope" not in text
@@ -687,6 +868,6 @@ def test_report_for_package_with_a_missing_copy_can_never_match(env):
 # ============================================================ constants
 def test_defaults_match_the_design():
     cfg = rm.RouterConfig()
-    assert (cfg.claim_stale_seconds, cfg.lock_wait_seconds, cfg.max_slots) == (600.0, 60.0, 2)
+    assert (cfg.lock_wait_seconds, cfg.poll_seconds, cfg.max_slots) == (60.0, 0.5, 2)
     assert (cfg.tmp_max_age_seconds, cfg.blocked_retention_seconds) == (3600.0, 14 * 86400.0)
     assert cfg.max_result_bytes == 1024 * 1024 and cfg.timeout == 120.0 and cfg.max_retries == 2

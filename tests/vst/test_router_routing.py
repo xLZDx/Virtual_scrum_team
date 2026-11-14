@@ -36,7 +36,7 @@ RESULT = "c" * 64
 
 
 def row(status="VERIFIED", **over):
-    doc = {"outcome": OUTCOMES.get(status, "ROUTED_VERIFIED") if isinstance(status, str) else "ROUTED_VERIFIED", "status": status, "task_id": "LINK2-DEMO-1", "request_sha256": "a" * 64,
+    doc = {"outcome": OUTCOMES.get(status, "ROUTED_VERIFIED") if isinstance(status, str) else "ROUTED_VERIFIED", "status": status, "task_id": FP.STORY, "request_sha256": "a" * 64,
            "packet_sha256": "b" * 64, "result_sha256": RESULT, "report_sha256": "d" * 64, "pin_head": PIN,
            "result_sha256_recomputed": RESULT}
     doc.update(over)
@@ -169,10 +169,26 @@ def test_both_reasons_are_listed_together():
     assert sorted(reasons(result)) == ["ROUTER_NOT_VERIFIED", "ROUTER_RESULT_DIGEST_MISMATCH"]
 
 
-def test_a_row_without_the_requirement_is_recorded_and_does_not_refuse():
-    result = build(router_required=False, router_report=row("REJECTED"))
-    assert result.ready and result.package["router"]["outcome"] == "ROUTED_REJECTED"
+def test_a_verified_row_without_the_requirement_is_recorded_and_does_not_refuse():
+    result = build(router_required=False, router_report=row())
+    assert result.ready and result.package["router"]["outcome"] == "ROUTED_VERIFIED"
     assert "router_report_sha256" in result.package["evidence_digests"]
+
+
+@pytest.mark.parametrize("status", ["REJECTED", "UNKNOWN", "INVALID"])
+def test_any_supplied_non_verified_row_refuses_even_when_not_required(status):  # AC-37
+    result = build(router_required=False, router_report=row(status))
+    assert result.verdict == fp.REFUSED and reasons(result) == ["ROUTER_NOT_VERIFIED"] and result.package is None
+
+
+@pytest.mark.parametrize("required", [True, False])
+def test_row_of_another_story_refuses_with_router_not_verified(required):  # AC-37
+    result = build(router_required=required, router_report=row(task_id="OTHER-STORY-9"))
+    assert result.verdict == fp.REFUSED and reasons(result) == ["ROUTER_NOT_VERIFIED"]
+
+
+def test_no_row_and_not_required_keeps_the_package_bytes_unchanged():  # AC-37 boundary
+    assert build(router_required=False, router_report=None).package_sha256 == build().package_sha256
 
 
 @pytest.mark.parametrize("label,doc", [
@@ -213,6 +229,8 @@ def test_package_is_ready_only_for_a_verified_row_and_a_clean_review(status, ver
         verdict="BLOCKED", reasons=["REVIEW_BLOCKED"])
     result = build(router_required=True, router_report=row(status), review_results=review)
     assert (result.verdict == fp.READY) == (status == "VERIFIED" and verdict == "CLEAN")
+    if status != "VERIFIED" and verdict == "CLEAN":
+        assert result.verdict == fp.REFUSED  # AC-37: a non-verified row refuses even over a clean review
 
 
 # ============================================================ AC-22, AC-23: the driver stage
@@ -261,11 +279,58 @@ def test_the_shipped_catalog_is_gates_so_the_stage_is_skipped_by_default(no_rout
 
 
 @pytest.mark.parametrize("role", ["loop-operator", "rosetta", None, "", "Planner"])
-def test_router_mode_with_a_role_outside_the_five_skips_the_stage(set_mode, no_route, role):  # AC-23
+def test_router_mode_with_a_role_outside_the_five_blocks_the_stage(set_mode, no_route, role):  # AC-23
     set_mode("router")
     ev: dict = {}
-    assert drv.stage_router(args(router_role=role), object(), ev) == (False, None)
-    assert ev["router"] == {"skipped": "the story role is not a HANDOFF_ASSISTED role", "role": role}
+    assert drv.stage_router(args(router_role=role), object(), ev) == (True, None)  # active, no row: blocked
+    assert ev["router"]["blocked"] == "ROUTER_ROLE_NOT_HANDOFF_ASSISTED" and ev["router"]["role"] == role
+
+
+def _run_main(monkeypatch, tmp_path, stage_router_result):
+    """Drive drv.main() with every stage but the router faked; returns (exit code, evidence, review calls)."""
+    import json
+    import sys
+
+    monkeypatch.setattr(sys, "argv", ["drv", "--worktree", str(tmp_path), "--aeve", "x", "--target-file", "a.md",
+                                      "--out", str(tmp_path / "out"), "--state-dir", str(tmp_path / "st")])
+    monkeypatch.setattr(drv, "git", lambda *a, **k: "HEAD0")
+
+    def propose(args, ev):
+        ev["propose"] = {"snapshot_head": "h"}
+        return "full", "narrow"
+
+    monkeypatch.setattr(drv, "stage_propose", propose)
+    def apply(args, doc, kind, ev, *rest):
+        ev["apply_" + kind] = {"verdict": "ACCEPTED"}
+        return types.SimpleNamespace(verdict="ACCEPTED")
+
+    monkeypatch.setattr(drv, "stage_apply", apply)
+    def router(args, res, ev):
+        ev["router"] = {"blocked": "X"}
+        return stage_router_result
+
+    monkeypatch.setattr(drv, "stage_router", router)
+    reviewed = []
+    monkeypatch.setattr(drv, "stage_review", lambda *a, **k: reviewed.append(1) or types.SimpleNamespace(verdict="CLEAN"))
+    monkeypatch.setattr(drv, "stage_package", lambda *a, **k: True)
+    code = drv.main()
+    return code, json.loads((tmp_path / "out" / "evidence.json").read_text(encoding="utf-8")), reviewed
+
+
+def test_main_returns_2_when_the_router_blocks_and_runs_no_review(monkeypatch, tmp_path):  # AC-23
+    code, ev, reviewed = _run_main(monkeypatch, tmp_path, (True, None))
+    assert code == 2 and reviewed == [] and ev["final_package"].startswith("NOT_RUN")
+
+
+def test_main_returns_2_for_a_non_verified_router_row(monkeypatch, tmp_path):  # AC-23
+    rejected = types.SimpleNamespace(outcome="ROUTED_REJECTED")
+    code, _ev, reviewed = _run_main(monkeypatch, tmp_path, (True, rejected))
+    assert code == 2 and reviewed == []
+
+
+def test_main_returns_0_when_the_router_is_not_active(monkeypatch, tmp_path):  # AC-22
+    code, _ev, reviewed = _run_main(monkeypatch, tmp_path, (False, None))
+    assert code == 0 and reviewed == [1]
 
 
 @pytest.mark.parametrize("role", rr.ROUTER_ROLES)

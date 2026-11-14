@@ -125,6 +125,26 @@ def test_task_id_with_a_trailing_line_feed_is_refused(no_process, task_id):  # A
     assert code_of(rr.build_request, **dict(STORY, task_id=task_id)).reason == "ROUTER_BAD_REQUEST"
 
 
+RESERVED = ["con", "nul", "com1", "lpt9", "Aux", "PRN", "CON", "com9", "LPT1", "con.txt", "NUL.tar.gz"]  # Windows device names
+
+
+@pytest.mark.parametrize("task_id", RESERVED + ["a.", "story.", "a.b.", "T-1."])
+def test_windows_reserved_names_and_a_trailing_dot_are_refused(no_process, task_id):  # AC-5: the id is a directory name
+    assert code_of(rr.build_request, **dict(STORY, task_id=task_id)).reason == "ROUTER_BAD_REQUEST"
+    assert rr.valid_task_id(task_id) is False
+
+
+@pytest.mark.parametrize("task_id", ["com10", "lpt10", "com0", "console", "nulx", "a.con", "my-con", "S20-T08", "a", "a" * 64])
+def test_near_miss_names_are_still_accepted(task_id):
+    assert rr.valid_task_id(task_id) is True
+    assert rr.build_request(**dict(STORY, task_id=task_id))["task_id"] == task_id
+
+
+@pytest.mark.parametrize("task_id", [None, 5, b"a", ["a"], "", "a\n"])
+def test_valid_task_id_is_false_for_a_non_string_or_a_bad_pattern(task_id):
+    assert rr.valid_task_id(task_id) is False
+
+
 @pytest.mark.parametrize("task_id", ["a", "A", "0", "a.b_c-d", "S20-T08", "a" * 64])
 def test_task_id_boundary_values_that_are_allowed(task_id):
     assert rr.build_request(**dict(STORY, task_id=task_id))["task_id"] == task_id
