@@ -134,8 +134,8 @@ marked "amended"):
   `result_sha256_recomputed` with `result_sha256`.)
 - Refusals (added with `_add`, so the verdict is REFUSED): `ROUTER_NOT_VERIFIED` when `router_required` is True and the row
   is missing, or the outcome is not `ROUTED_VERIFIED`, or `status` is not `VERIFIED`, or `pin_head` differs from the
-  expected pin; `ROUTER_RESULT_DIGEST_MISMATCH` when `result_sha256_recomputed` differs from `result_sha256`. A row passed
-  with `router_required` False is recorded but never refuses.
+  expected pin; `ROUTER_RESULT_DIGEST_MISMATCH` when `result_sha256_recomputed` differs from `result_sha256` (checked for
+  every supplied row). A row passed with `router_required` False is recorded and refuses only on the digest mismatch.
 - `_free_text` (secret scan) is not extended: the row holds only enums, task_id and hex values checked by shape.
   `verify_package_current` is unchanged: it does not read the router keys and a router row carries no head.
 

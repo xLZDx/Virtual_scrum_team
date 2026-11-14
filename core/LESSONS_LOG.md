@@ -2595,3 +2595,9 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 - Kind: SHORTCOMING (revision 2 said final_package recomputes the result digest, but the builder holds no result bytes and does no file IO).
 - Facts: reading build_final_package and _build showed no input for the result file and no pin parameter, and the driver had no story role to decide when the router stage runs. The pinned section now adds a caller-supplied recomputed digest, a pin parameter and CLI arguments. Nothing was run (operator ban).
 - Rule: before pinning a check to a module, read what inputs that module receives; if the evidence is not an input, move the hashing to the caller and pass the result in.
+
+## 2026-11-14 — LINK2-T4B optional parameters keep every old package byte for byte
+
+- Kind: SUCCESS (the router section adds its keys only when a row is supplied, so a gates run builds the same bytes as before).
+- Facts: build_final_package gained three keyword parameters with defaults, and _build adds the router key and its digest only for a given row; the driver stage is skipped in gates mode and records one skipped note in the evidence. Nothing was run (operator ban); checked by reading the package dict construction.
+- Rule: when extending a hashed document, add keys conditionally and show by reading that the default path never touches them.

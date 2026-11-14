@@ -354,6 +354,36 @@ def release_work_dir(state_root: str | os.PathLike, task_id: str, request_sha256
     return removed
 
 
+# ------------------------------------------------------------------ routing matrix and package row (LINK2-T4b)
+ELIGIBLE = "ELIGIBLE"
+BLOCKED = "BLOCKED"
+ROUTER_OUTCOMES = tuple(rac.OUTCOME_FOR_STATUS.values())  # ROUTED_VERIFIED, ROUTED_REJECTED, ROUTED_UNKNOWN, ROUTER_INVALID_INPUT
+REVIEW_VERDICTS = ("CLEAN", "FINDINGS", "PARTIAL", "BLOCKED")
+
+
+def route_gate(outcome: object, review_verdict: object) -> str:
+    """The router outcome combined with the review judgement. ELIGIBLE (a final package may become READY) only for
+    ROUTED_VERIFIED with CLEAN; every other cell, an outcome of None (no verdict yet) and any unknown string is BLOCKED.
+    UNKNOWN is never eligible. Necessary, never sufficient: the diff gate and the package checks still apply."""
+    if outcome == "ROUTED_VERIFIED" and review_verdict == "CLEAN":
+        return ELIGIBLE
+    return BLOCKED
+
+
+def report_for_package(row: RouterRow) -> dict[str, Any]:
+    """The `router_report` of `build_final_package`: the row plus the digest of the result copy hashed right now.
+
+    A row without a recorded verdict (AWAITING_RESULT) has no digests and raises ROUTER_NOT_VERIFIED."""
+    if row.state != DONE or row.outcome is None or not (row.result_sha256 and row.report_sha256 and row.packet_sha256):
+        raise RouterError("ROUTER_NOT_VERIFIED", "the router row has no recorded verdict")
+    now = _file_sha(pathlib.Path(row.work_dir) / "result.json")
+    report = row.to_report()
+    report["result_sha256_recomputed"] = now if now is not None else "0" * 64  # a missing copy can never match
+    if row.aeve_request_sha256:
+        report["aeve_request_sha256"] = row.aeve_request_sha256
+    return report
+
+
 # ------------------------------------------------------------------ the flow
 class _Run:
     def __init__(self, request: Mapping[str, Any], payload: bytes, state_root: pathlib.Path, aeve_root: pathlib.Path,
