@@ -777,6 +777,137 @@ def test_release_work_dir_refuses_while_the_claim_is_held_and_works_after(env, h
     assert not (env.router_root / "LINK2-REL-HELD").exists()
 
 
+def snapshot(root: pathlib.Path) -> dict[str, bytes]:
+    """Every file under `root` (relative posix path -> bytes), claim.lock excluded: the claim file is the lock itself."""
+    return {path.relative_to(root).as_posix(): path.read_bytes() for path in sorted(root.rglob("*"))
+            if path.is_file() and path.name != rm.CLAIM_NAME}
+
+
+def test_release_work_dir_with_a_foreign_held_claim_deletes_nothing_at_all(env, holder):  # AC-25, D4 (LINK2-FIX3)
+    request = S.sample_request(task_id="LINK2-REL-INTACT")
+    row = env.route(request)  # full flow: pending dir (state, packet) and a result dir
+    task_dir = env.router_root / "LINK2-REL-INTACT"
+    before = snapshot(task_dir)
+    assert any(name.endswith(rm.STATE_NAME) for name in before) and len(before) >= 3
+    proc = holder(env.pending(request) / rm.CLAIM_NAME)
+    err = code_of(rm.release_work_dir, env.state_root, "LINK2-REL-INTACT", row.request_sha256)
+    assert err.reason == "ROUTER_LOCK_TIMEOUT"
+    assert snapshot(task_dir) == before  # every file, byte for byte; nothing half-deleted
+    assert pathlib.Path(row.work_dir).is_dir() and pathlib.Path(row.packet_path).is_file()
+    assert (env.pending(request) / rm.CLAIM_NAME).exists()
+    proc.kill()
+    proc.wait(30)
+
+
+def test_release_work_dir_on_a_free_claim_removes_everything_including_claim_lock(env):  # D4
+    request = S.sample_request(task_id="LINK2-REL-FREE")
+    row = env.route(request)
+    assert (env.pending(request) / rm.CLAIM_NAME).exists()  # a run leaves its claim file behind
+    assert rm.release_work_dir(env.state_root, "LINK2-REL-FREE", row.request_sha256) == 2
+    assert not env.pending(request).exists() and not pathlib.Path(row.work_dir).exists()
+    assert not (env.router_root / "LINK2-REL-FREE").exists()  # claim.lock and the task directory are gone too
+    assert list(env.router_root.rglob(rm.CLAIM_NAME)) == []
+
+
+def test_sweep_skips_a_foreign_held_claim_and_leaves_every_file_intact(env, holder):  # AC-31, AC-25 (LINK2-FIX3)
+    env.stub.set("verify-handoff", checks={"CHANGES_INSIDE_SCOPE": "FAIL"})
+    request = S.sample_request(task_id="LINK2-SWEEP-INTACT")
+    env.route(request)
+    age(env.pending(request) / rm.STATE_NAME, 20 * 86400)
+    task_dir = env.router_root / "LINK2-SWEEP-INTACT"
+    before = snapshot(task_dir)
+    proc = holder(env.pending(request) / rm.CLAIM_NAME)
+    counts = rm.sweep(env.router_root, env.cfg)
+    assert counts["blocked_dirs"] == 0
+    assert snapshot(task_dir) == before
+    proc.kill()
+    proc.wait(30)
+    counts = rm.sweep(env.router_root, env.cfg)  # the OS dropped the dead holder's lock: now it goes, claim.lock too
+    assert counts["blocked_dirs"] >= 1 and not env.pending(request).exists()
+
+
+def test_old_blocked_directory_with_a_free_claim_is_swept_with_its_claim_file(env):  # AC-31
+    env.stub.set("verify-handoff", checks={"CHANGES_INSIDE_SCOPE": "FAIL"})
+    request = S.sample_request(task_id="LINK2-SWEEP-FREE")
+    row = env.route(request)
+    age(env.pending(request) / rm.STATE_NAME, 20 * 86400)
+    rm.sweep(env.router_root, env.cfg)
+    assert not env.pending(request).exists() and not pathlib.Path(row.work_dir).exists()
+    assert list((env.router_root / "LINK2-SWEEP-FREE").rglob(rm.CLAIM_NAME)) == []
+
+
+def _slow_unlink(monkeypatch, releaser_thread_name: str, started: threading.Event, pause: float) -> None:
+    """Test-side seam: make every unlink done by the releasing thread slow, so the deletion window is wide. This slows the
+    cleanup only; the claim logic under test is untouched."""
+    real = os.unlink
+
+    def slow(path, *args, **kwargs):
+        if threading.current_thread().name == releaser_thread_name:
+            started.set()
+            time.sleep(pause)
+        return real(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", slow)
+
+
+def _release_while_another_run_arrives(env, monkeypatch, acquirer_cfg):
+    """Fill the pending directory with many files, start release_work_dir in a thread with slow unlinks and, once the
+    deletion began, let another caller (same process, own file handle: the OS lock still conflicts) call route_task for
+    the same request. Returns (release outcome, acquirer outcome)."""
+    request = S.sample_request(task_id="LINK2-REL-RACE")
+    row = env.route(request)  # state DONE, a verdict, a result dir: valid state a half-read would adopt
+    for index in range(40):
+        (env.pending(request) / f"filler-{index:02d}.bin").write_bytes(b"x" * 64)
+    started = threading.Event()
+    _slow_unlink(monkeypatch, "releaser", started, 0.03)  # about 1.2 s of deletion
+    outcome: dict[str, object] = {}
+
+    def release():
+        try:
+            outcome["released"] = rm.release_work_dir(env.state_root, "LINK2-REL-RACE", row.request_sha256)
+        except BaseException as exc:  # recorded and asserted by the caller
+            outcome["release_error"] = exc
+
+    def acquire():
+        try:
+            outcome["row"] = env.route(request, result=None, cfg=acquirer_cfg)
+        except RouterError as exc:
+            outcome["acquire_error"] = exc
+
+    releaser = threading.Thread(target=release, name="releaser")
+    releaser.start()
+    assert started.wait(10), "the deletion never started"
+    acquirer = threading.Thread(target=acquire, name="acquirer")
+    acquirer.start()
+    releaser.join(60)
+    acquirer.join(60)
+    assert not releaser.is_alive() and not acquirer.is_alive()
+    return row, outcome
+
+
+def test_a_caller_arriving_during_the_deletion_times_out_and_sees_no_half_deleted_state(env, monkeypatch):  # AC-25
+    impatient = env.with_cfg(lock_wait_seconds=0.3)  # shorter than the deletion: cannot wait it out
+    row, outcome = _release_while_another_run_arrives(env, monkeypatch, impatient)
+    assert outcome.get("released") == 2, outcome  # the deletion was not disturbed
+    err = outcome.get("acquire_error")
+    assert isinstance(err, RouterError) and err.reason == "ROUTER_LOCK_TIMEOUT", outcome
+    assert "row" not in outcome  # no row built from a half-deleted state
+    assert not (env.router_root / "LINK2-REL-RACE").exists()  # and the caller left nothing behind
+
+
+def test_a_caller_arriving_during_the_deletion_waits_then_starts_fresh_never_adopts_the_old_row(env, monkeypatch):  # AC-25
+    patient = env.with_cfg(lock_wait_seconds=30.0)
+    row, outcome = _release_while_another_run_arrives(env, monkeypatch, patient)
+    assert outcome.get("released") == 2, outcome
+    assert "acquire_error" not in outcome, outcome
+    fresh = outcome["row"]
+    # the old request was DONE with a verdict; after the cleanup the same request starts from nothing: it waits for a
+    # result again and carries no digest of the deleted run
+    assert fresh.state == "AWAITING_RESULT" and fresh.outcome is None and fresh.report_sha256 is None
+    assert fresh.result_sha256 is None
+    assert pathlib.Path(fresh.packet_path).is_file()  # a new packet exists on disk, not a dangling path
+
+
 def test_release_work_dir_has_no_config_parameter():
     import inspect
 

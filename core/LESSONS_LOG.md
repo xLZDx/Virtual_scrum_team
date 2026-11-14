@@ -2643,3 +2643,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SHORTCOMING (release_work_dir and sweep probed the claim and deleted afterwards; our own tests and reviewers passed it, GPT-PM round 1 caught the check-then-act gap).
 - Rule: a cleanup that deletes under an OS lock must take that same lock itself and hold it until the deletion ended; a probe-then-delete is never enough, and a lock file inside the deleted directory is removed last, after the handle is released on Windows.
+
+## 2026-11-15 — A race test needs a wide window, not a lucky one
+
+- Kind: SUCCESS (slowing only the cleaning thread's unlink made the deletion window about 1 s, so the arriving caller is inside it deterministically).
+- Rule: to test a lock held during deletion, widen the window from the test side (a patched unlink limited to the releasing thread) and assert the outcomes the contract allows, never timing.
