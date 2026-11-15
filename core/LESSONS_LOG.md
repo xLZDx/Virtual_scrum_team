@@ -2648,3 +2648,8 @@ AEVE reads packet and result files only up to 64 KiB, while the design caps VST 
 
 - Kind: SUCCESS (slowing only the cleaning thread's unlink made the deletion window about 1 s, so the arriving caller is inside it deterministically).
 - Rule: to test a lock held during deletion, widen the window from the test side (a patched unlink limited to the releasing thread) and assert the outcomes the contract allows, never timing.
+
+## 2026-11-15 — free-text plan status broke the report step for two sprints
+
+- Kind: SHORTCOMING (the status `ACCEPTED as NOT_RUN measurement` in PROJECT_PLAN.md U6-2 made report.py fail on every commit; each agent noted the hook error and went on, so it lasted until the tail review).
+- Rule: use only the allowed status values in plan rows and put qualifiers in the row text; when a hook error repeats on every commit, fix its cause in the same sprint instead of noting it.
